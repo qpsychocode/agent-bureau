@@ -44,6 +44,8 @@ test("server-renders the Agent Bureau office", async () => {
     "Ресерчер",
     "Верификатор",
     "Копирайтер",
+    "Маркетолог",
+    "Иллюстратор",
   ]) {
     assert.match(html, new RegExp(agent));
   }
@@ -59,12 +61,16 @@ test("removes starter-only preview code and metadata", async () => {
   ]);
 
   assert.match(page, /http:\/\/127\.0\.0\.1:7331\/api\/state/);
-  assert.match(page, /src="\/og\.png"/);
+  assert.match(page, /src="\/office-empty-v2\.png"/);
+  assert.match(page, /ROLE_SPRITES/);
+  assert.match(page, /HotDeskAgent/);
   assert.match(page, /TaskAssignment|task-packet/);
   assert.match(page, /mergeLiveWithRoster/);
   assert.match(page, /presence:\s*"standby"/);
   assert.match(page, /agent\.presence !== "standby"/);
-  assert.doesNotMatch(page, /PixelAgent|agent-sprite|robot-head|OfficeRoom/);
+  assert.doesNotMatch(page, /PixelAgent|robot-head|OfficeRoom/);
+  assert.match(css, /@keyframes agent-working/);
+  assert.match(css, /@keyframes agent-arrive/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(layout, /Агентское бюро — живой офис/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
@@ -74,4 +80,15 @@ test("removes starter-only preview code and metadata", async () => {
   await assert.rejects(
     access(new URL("app/_sites-preview", templateRoot)),
   );
+  await Promise.all([
+    access(new URL("../public/office-empty-v2.png", import.meta.url)),
+    access(new URL("../public/agents/orchestrator.png", import.meta.url)),
+    access(new URL("../public/agents/researcher.png", import.meta.url)),
+    access(new URL("../public/agents/coder.png", import.meta.url)),
+    access(new URL("../public/agents/reviewer.png", import.meta.url)),
+    access(new URL("../public/agents/designer.png", import.meta.url)),
+    access(new URL("../public/agents/copywriter.png", import.meta.url)),
+    access(new URL("../public/agents/marketing.png", import.meta.url)),
+    access(new URL("../public/agents/image.png", import.meta.url)),
+  ]);
 });

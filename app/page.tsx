@@ -138,6 +138,17 @@ const ROLE_COLORS: Record<string, string> = {
   agent: "#b5bbca",
 };
 
+const ROLE_SPRITES: Record<string, string> = {
+  orchestrator: "/agents/orchestrator.png",
+  researcher: "/agents/researcher.png",
+  coder: "/agents/coder.png",
+  reviewer: "/agents/reviewer.png",
+  designer: "/agents/designer.png",
+  copywriter: "/agents/copywriter.png",
+  marketing: "/agents/marketing.png",
+  image: "/agents/image.png",
+};
+
 const STAGE_SLOTS: Record<
   StageSlot,
   { x: number; y: number; width: number; height: number; label: string }
@@ -150,6 +161,15 @@ const STAGE_SLOTS: Record<
 };
 
 const WORKER_SLOTS: WorkerSlot[] = ["research", "code", "review", "creative"];
+
+const HOT_DESK_SPOTS = [
+  { x: 11, y: 63, width: 12, height: 31 },
+  { x: 37, y: 66, width: 11, height: 28 },
+  { x: 65, y: 66, width: 11, height: 28 },
+  { x: 89, y: 66, width: 10, height: 28 },
+  { x: 15, y: 38, width: 10, height: 25 },
+  { x: 64, y: 35, width: 9, height: 24 },
+] as const;
 
 function isAgentStatus(value: unknown): value is AgentStatus {
   return typeof value === "string" && value in STATUS_META;
@@ -246,6 +266,21 @@ function roleLabel(role: string) {
 
 function roleColor(role: string) {
   return ROLE_COLORS[roleKey(role)] ?? ROLE_COLORS.agent;
+}
+
+function stableHash(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function spriteFor(agent: Agent) {
+  const key = roleKey(agent.role);
+  if (ROLE_SPRITES[key]) return ROLE_SPRITES[key];
+  const fallbacks = ["coder", "designer", "copywriter", "marketing", "image"];
+  return ROLE_SPRITES[fallbacks[stableHash(`${agent.id}:${agent.role}`) % fallbacks.length]];
 }
 
 function mergeLiveWithRoster(live: BureauState): BureauState {
@@ -410,6 +445,26 @@ function arrangeStage(agents: Agent[]) {
   return { orchestrator, occupants, overflow: remaining };
 }
 
+function AgentSprite({ agent }: { agent: Agent }) {
+  const style = {
+    "--role-accent": roleColor(agent.role),
+    "--agent-delay": `${stableHash(agent.id) % 700}ms`,
+  } as CSSProperties;
+
+  return (
+    <span className="agent-figure" style={style} aria-hidden="true">
+      <span className="sprite-shadow" />
+      <span className="sprite-motion">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="agent-sprite-image" src={spriteFor(agent)} alt="" draggable={false} />
+        <i className="sprite-beacon" />
+        {agent.status === "working" && <i className="work-pixels"><b /><b /><b /></i>}
+        {agent.status === "reviewing" && <i className="review-scan" />}
+      </span>
+    </span>
+  );
+}
+
 function AgentHotspot({
   agent,
   slot,
@@ -446,6 +501,7 @@ function AgentHotspot({
       title={`${coordinates.label}: открыть карточку ${agent.name}`}
     >
       <span className="hotspot-aura" aria-hidden="true" />
+      <AgentSprite agent={agent} />
       <span className="agent-label">
         <i aria-hidden="true" />
         <span>
@@ -456,6 +512,51 @@ function AgentHotspot({
               : `уровень 02 · ${assignment?.taskId ?? meta.short}`}
           </small>
         </span>
+      </span>
+    </button>
+  );
+}
+
+function HotDeskAgent({
+  agent,
+  index,
+  assignment,
+  selected,
+  onSelect,
+}: {
+  agent: Agent;
+  index: number;
+  assignment?: RoutedAssignment;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const coordinates = HOT_DESK_SPOTS[index];
+  const meta = STATUS_META[agent.status];
+  const style = {
+    left: `${coordinates.x}%`,
+    top: `${coordinates.y}%`,
+    width: `${coordinates.width}%`,
+    height: `${coordinates.height}%`,
+    "--role-accent": roleColor(agent.role),
+  } as CSSProperties;
+
+  return (
+    <button
+      type="button"
+      className={`agent-hotspot hot-desk-agent status-${agent.status} presence-${agent.presence ?? "demo"}${
+        selected ? " is-selected" : ""
+      }`}
+      style={style}
+      onClick={onSelect}
+      aria-pressed={selected}
+      aria-label={`${agent.name}, дополнительное место, ${meta.label}. ${assignment?.title ?? agent.task ?? "Без задачи"}`}
+      title={`Горячее место ${index + 1}: открыть карточку ${agent.name}`}
+    >
+      <span className="hotspot-aura" aria-hidden="true" />
+      <AgentSprite agent={agent} />
+      <span className="agent-label">
+        <i aria-hidden="true" />
+        <span><strong>{agent.name}</strong><small>уровень 02 · hot desk</small></span>
       </span>
     </button>
   );
@@ -691,13 +792,13 @@ export default function Home() {
 
       <section className="scene-scroll" aria-label="Живой офис Агентского бюро">
         <figure className="office-stage">
-          {/* The office is a deliberately pixel-perfect static scene; bypassing
-              image optimization also keeps the local vinext observer self-contained. */}
+          {/* The empty office is the environment layer. Every agent is rendered
+              separately below so live roster changes can animate into the scene. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="office-art"
-            src="/og.png"
-            alt="Пиксельный офис: оркестратор руководит исследователем, разработчиком, верификатором и креативной командой"
+            src="/office-empty-v2.png"
+            alt="Пиксельный интерьер Агентского бюро с рабочими кабинетами"
             width={1672}
             height={941}
           />
@@ -708,6 +809,18 @@ export default function Home() {
             <path className="route-path route-code" d="M 53 49 V 57 H 30 V 65" />
             <path className="route-path route-review" d="M 53 49 V 65" />
             <path className="route-path route-creative" d="M 53 49 V 57 H 81 V 65" />
+            {stage.overflow.slice(0, HOT_DESK_SPOTS.length).map((agent, index) => {
+              const spot = HOT_DESK_SPOTS[index];
+              const assignment = latestAssignmentByAgent.get(agent.id);
+              if (!assignment) return null;
+              return (
+                <path
+                  key={`route-${agent.id}`}
+                  className="route-path route-hot-desk"
+                  d={`M 53 49 V 58 H ${spot.x + spot.width / 2} V ${spot.y + 3}`}
+                />
+              );
+            })}
           </svg>
 
           {stage.orchestrator && (
@@ -734,6 +847,17 @@ export default function Home() {
             );
           })}
 
+          {stage.overflow.slice(0, HOT_DESK_SPOTS.length).map((agent, index) => (
+            <HotDeskAgent
+              key={agent.id}
+              agent={agent}
+              index={index}
+              assignment={latestAssignmentByAgent.get(agent.id)}
+              selected={selectedId === agent.id}
+              onSelect={() => setSelectedId(agent.id)}
+            />
+          ))}
+
           {WORKER_SLOTS.map((slot) => {
             const agent = stage.occupants[slot];
             const assignment = agent ? latestAssignmentByAgent.get(agent.id) : undefined;
@@ -751,11 +875,40 @@ export default function Home() {
               </button>
             );
           })}
+
+          {stage.overflow.slice(0, HOT_DESK_SPOTS.length).map((agent, index) => {
+            const assignment = latestAssignmentByAgent.get(agent.id);
+            if (!assignment) return null;
+            const spot = HOT_DESK_SPOTS[index];
+            return (
+              <button
+                key={`task-packet-overflow-${assignment.id}`}
+                type="button"
+                className={`task-packet packet-hot-desk${selectedId === agent.id ? " is-selected" : ""}`}
+                style={{ left: `${spot.x + spot.width / 2}%`, top: `${spot.y - 2}%` }}
+                onClick={() => setSelectedId(agent.id)}
+                aria-label={`Открыть задачу ${assignment.title}, переданную агенту ${agent.name}`}
+                title={`${assignment.taskId ?? "TASK"}: ${assignment.title}`}
+              >
+                <i aria-hidden="true">◆</i><span>{assignment.taskId ?? "TASK"}</span>
+              </button>
+            );
+          })}
+
+          {stage.overflow.length > HOT_DESK_SPOTS.length && (
+            <button
+              type="button"
+              className="overflow-counter"
+              onClick={() => setSelectedId(stage.overflow[HOT_DESK_SPOTS.length]?.id ?? null)}
+            >
+              +{stage.overflow.length - HOT_DESK_SPOTS.length} в очереди
+            </button>
+          )}
         </figure>
       </section>
 
       <header className="observer-hud">
-        <div className="hud-brand"><span>OBSERVER</span><b>v0.3</b></div>
+        <div className="hud-brand"><span>OBSERVER</span><b>v0.4</b></div>
         <button
           type="button"
           className="mode-switch"

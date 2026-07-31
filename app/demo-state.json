@@ -37,7 +37,7 @@
       "role": "designer",
       "status": "working",
       "taskId": "UI-14",
-      "task": "Собрать каноническую pixel-office сцену",
+      "task": "Разделить интерьер и анимируемые спрайты",
       "model": "gpt-5.6-terra",
       "effort": "medium",
       "summary": "Настраивает комнаты и анимации статусов",
@@ -87,6 +87,30 @@
       "summary": "Свободен",
       "stale": false,
       "elapsedSeconds": 0
+    },
+    {
+      "id": "marketing-1",
+      "name": "Маркетолог",
+      "role": "marketing",
+      "status": "idle",
+      "task": "Ожидает новую задачу",
+      "model": "luna",
+      "effort": "medium",
+      "summary": "Свободен",
+      "stale": false,
+      "elapsedSeconds": 0
+    },
+    {
+      "id": "image-1",
+      "name": "Иллюстратор",
+      "role": "image",
+      "status": "idle",
+      "task": "Ожидает новую задачу",
+      "model": "luna",
+      "effort": "medium",
+      "summary": "Свободен",
+      "stale": false,
+      "elapsedSeconds": 0
     }
   ],
   "assignments": [
@@ -106,8 +130,8 @@
       "taskId": "UI-14",
       "fromAgentId": "orchestrator",
       "toAgentId": "designer-1",
-      "title": "Собрать каноническую pixel-office сцену",
-      "summary": "Использовать точный public/og.png как сцену и добавить поверх только интерактивные зоны, иерархию и передачу задач.",
+      "title": "Разделить интерьер и анимируемые спрайты",
+      "summary": "Сохранить стиль канонического public/og.png, но рендерить пустой интерьер и каждого агента отдельным DOM-спрайтом со статусной анимацией.",
       "status": "working",
       "assignedAt": "2026-07-31T11:54:00.000Z",
       "updatedAt": "2026-07-31T12:00:00.000Z"
