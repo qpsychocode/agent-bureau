@@ -37,6 +37,7 @@ test("server-renders the Agent Bureau office", async () => {
   assert.match(html, /МАРШРУТЫ ЗАДАЧ/);
   assert.match(html, /НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА/);
   assert.match(html, /ПУЛ АГЕНТОВ/);
+  assert.match(html, /Добавить агента/);
   for (const agent of [
     "Оркестратор",
     "Кодер",
@@ -69,6 +70,13 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(page, /mergeLiveWithRoster/);
   assert.match(page, /presence:\s*"standby"/);
   assert.match(page, /agent\.presence !== "standby"/);
+  assert.match(page, /CUSTOM_AGENTS_STORAGE_KEY/);
+  assert.match(page, /OFFICE_TEMPLATES/);
+  assert.match(page, /function AgentBuilder/);
+  assert.match(page, /Prompt хранится только в localStorage/);
+  const customAdapter = page.match(/function customDefinitionToAgent[\s\S]*?\n}\n\nfunction mergeLiveWithRoster/)?.[0] ?? "";
+  assert.ok(customAdapter);
+  assert.doesNotMatch(customAdapter, /definition\.systemPrompt/);
   assert.doesNotMatch(page, /PixelAgent|robot-head|OfficeRoom/);
   assert.match(css, /@keyframes agent-working/);
   assert.match(css, /@keyframes agent-arrive/);
@@ -91,5 +99,13 @@ test("removes starter-only preview code and metadata", async () => {
     access(new URL("../public/agents/copywriter.png", import.meta.url)),
     access(new URL("../public/agents/marketing.png", import.meta.url)),
     access(new URL("../public/agents/image.png", import.meta.url)),
+    access(new URL("../public/offices/orchestrator.webp", import.meta.url)),
+    access(new URL("../public/offices/researcher.webp", import.meta.url)),
+    access(new URL("../public/offices/reviewer.webp", import.meta.url)),
+    access(new URL("../public/offices/coder.webp", import.meta.url)),
+    access(new URL("../public/offices/designer.webp", import.meta.url)),
+    access(new URL("../public/offices/copywriter.webp", import.meta.url)),
+    access(new URL("../public/offices/marketing.webp", import.meta.url)),
+    access(new URL("../public/offices/image.webp", import.meta.url)),
   ]);
 });

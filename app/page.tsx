@@ -6,9 +6,18 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type FormEvent,
   type RefObject,
 } from "react";
 import demoState from "./demo-state.json";
+import {
+  CUSTOM_AGENT_LIMIT,
+  matchLiveAgentsToRoster,
+  parseCustomAgents,
+  reserveUniqueAgentId,
+  type CustomAgentDefinition,
+  type OfficeKey,
+} from "./agent-data";
 
 type AgentStatus =
   | "idle"
@@ -27,7 +36,7 @@ type AssignmentStatus =
   | "blocked"
   | "done";
 
-type Presence = "demo" | "live" | "standby";
+type Presence = "demo" | "live" | "standby" | "custom";
 
 type Review = {
   status?: string;
@@ -56,6 +65,9 @@ type Agent = {
   elapsedSeconds?: number;
   stale?: boolean;
   review?: Review;
+  customOffice?: OfficeKey;
+  customAvatar?: OfficeKey;
+  customPromptStored?: boolean;
 };
 
 type TaskAssignment = {
@@ -94,6 +106,8 @@ type StageSlot = "orchestrator" | WorkerSlot;
 
 const DEMO_STATE = demoState as BureauState;
 const COLLECTOR_URL = "http://127.0.0.1:7331/api/state";
+const CUSTOM_AGENTS_STORAGE_KEY = "agent-bureau.custom-agents.v1";
+const ROSTER_AGENT_IDS = new Set(DEMO_STATE.agents.map((agent) => agent.id));
 
 const ACTIVE_STATUSES = new Set<AgentStatus>([
   "planning",
@@ -155,6 +169,28 @@ const ROLE_SPRITES: Record<string, string> = {
   marketing: "/agents/marketing.png",
   image: "/agents/image.png",
 };
+
+const OFFICE_TEMPLATES: Array<{
+  key: OfficeKey;
+  label: string;
+  description: string;
+  image: string;
+}> = [
+  { key: "orchestrator", label: "Командный", description: "Стратегия и раздача задач", image: "/offices/orchestrator.webp" },
+  { key: "researcher", label: "Архив", description: "Поиск и проверка источников", image: "/offices/researcher.webp" },
+  { key: "reviewer", label: "QA-лаборатория", description: "Верификация результата", image: "/offices/reviewer.webp" },
+  { key: "coder", label: "Разработка", description: "Код, тесты и сборки", image: "/offices/coder.webp" },
+  { key: "designer", label: "Дизайн-студия", description: "Интерфейсы и система визуала", image: "/offices/designer.webp" },
+  { key: "copywriter", label: "Редакция", description: "Тексты и сценарии", image: "/offices/copywriter.webp" },
+  { key: "marketing", label: "Маркетинг", description: "Кампании и аналитика", image: "/offices/marketing.webp" },
+  { key: "image", label: "Иллюстраторская", description: "Изображения и арт", image: "/offices/image.webp" },
+];
+
+const AVATAR_OPTIONS = OFFICE_TEMPLATES.map((office) => ({
+  key: office.key,
+  label: ROLE_LABELS[office.key] ?? office.label,
+  image: ROLE_SPRITES[office.key],
+}));
 
 const STAGE_SLOTS: Record<
   StageSlot,
@@ -286,24 +322,45 @@ function stableHash(value: string) {
 }
 
 function spriteFor(agent: Agent) {
+  if (agent.customAvatar && ROLE_SPRITES[agent.customAvatar]) {
+    return ROLE_SPRITES[agent.customAvatar];
+  }
   const key = roleKey(agent.role);
   if (ROLE_SPRITES[key]) return ROLE_SPRITES[key];
   const fallbacks = ["coder", "designer", "copywriter", "marketing", "image"];
   return ROLE_SPRITES[fallbacks[stableHash(`${agent.id}:${agent.role}`) % fallbacks.length]];
 }
 
+function customDefinitionToAgent(definition: CustomAgentDefinition): Agent {
+  const office = OFFICE_TEMPLATES.find((item) => item.key === definition.officeKey);
+  return {
+    id: definition.id,
+    name: definition.name,
+    role: definition.avatarKey,
+    status: "idle",
+    presence: "custom",
+    task: "Готов к подключению runtime",
+    summary: `Кастомный профиль · ${office?.label ?? "цифровой кабинет"}`,
+    model: "runtime не подключён",
+    effort: "из system prompt",
+    progress: 0,
+    elapsedSeconds: 0,
+    stale: false,
+    customOffice: definition.officeKey,
+    customAvatar: definition.avatarKey,
+    customPromptStored: true,
+  };
+}
+
 function mergeLiveWithRoster(live: BureauState): BureauState {
   const sourceToRoster = new Map<string, string>();
-  const usedLiveIds = new Set<string>();
+  const matching = matchLiveAgentsToRoster(DEMO_STATE.agents, live.agents, roleKey);
 
-  const roster = DEMO_STATE.agents.map<Agent>((base) => {
-    const liveAgent = live.agents.find((candidate) => {
-      if (usedLiveIds.has(candidate.id)) return false;
-      return candidate.id === base.id || roleKey(candidate.role) === roleKey(base.role);
-    });
+  const roster = DEMO_STATE.agents.map<Agent>((base, rosterIndex) => {
+    const liveIndex = matching.byRoster.get(rosterIndex);
+    const liveAgent = liveIndex === undefined ? undefined : live.agents[liveIndex];
 
     if (liveAgent) {
-      usedLiveIds.add(liveAgent.id);
       sourceToRoster.set(liveAgent.id, base.id);
       return {
         ...base,
@@ -332,11 +389,13 @@ function mergeLiveWithRoster(live: BureauState): BureauState {
     };
   });
 
-  const extras = live.agents
-    .filter((agent) => !usedLiveIds.has(agent.id))
-    .map<Agent>((agent) => {
-      sourceToRoster.set(agent.id, agent.id);
-      return { ...agent, sourceId: agent.id, presence: "live" };
+  const usedOutputIds = new Set(roster.map((agent) => agent.id));
+  const extras = matching.extraIndexes
+    .map<Agent>((liveIndex) => {
+      const agent = live.agents[liveIndex];
+      const outputId = reserveUniqueAgentId(agent.id, usedOutputIds);
+      if (!sourceToRoster.has(agent.id)) sourceToRoster.set(agent.id, outputId);
+      return { ...agent, id: outputId, sourceId: agent.id, presence: "live" };
     });
 
   const validIds = new Set([...roster, ...extras].map((agent) => agent.id));
@@ -526,19 +585,191 @@ function AgentHotspot({
   );
 }
 
+function AgentBuilder({
+  existing,
+  onCreate,
+  onClose,
+}: {
+  existing: CustomAgentDefinition[];
+  onCreate: (definition: CustomAgentDefinition) => void;
+  onClose: () => void;
+}) {
+  const [officeKey, setOfficeKey] = useState<OfficeKey>("coder");
+  const [avatarKey, setAvatarKey] = useState<OfficeKey>("coder");
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const dialog = dialogRef.current;
+    dialog?.focus();
+
+    const handleKeys = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeys);
+    return () => {
+      document.removeEventListener("keydown", handleKeys);
+      previousFocus?.focus();
+    };
+  }, []);
+
+  const office = OFFICE_TEMPLATES.find((item) => item.key === officeKey) ?? OFFICE_TEMPLATES[0];
+  const avatar = AVATAR_OPTIONS.find((item) => item.key === avatarKey) ?? AVATAR_OPTIONS[0];
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const prompt = systemPrompt.trim();
+    if (prompt.length < 12) return;
+    const sameAvatarCount = existing.filter((item) => item.avatarKey === avatarKey).length;
+    const baseName = ROLE_LABELS[avatarKey] ?? "Агент";
+    const suffix = sameAvatarCount + 2;
+    onCreate({
+      id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      name: `${baseName} ${suffix}`,
+      officeKey,
+      avatarKey,
+      systemPrompt: prompt.slice(0, 6_000),
+      createdAt: new Date().toISOString(),
+    });
+    onClose();
+  };
+
+  return (
+    <div className="builder-layer">
+      <button type="button" className="builder-scrim" onClick={onClose} aria-label="Закрыть конструктор" />
+      <div
+        ref={dialogRef}
+        className="agent-builder"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="builder-title"
+        tabIndex={-1}
+      >
+        <button type="button" className="builder-close" onClick={onClose} aria-label="Закрыть конструктор">×</button>
+        <header className="builder-header">
+          <span>КОНСТРУКТОР ПРОФИЛЯ</span>
+          <h2 id="builder-title">Новый агент</h2>
+          <p>Кабинет + аватар + system prompt. Код проекта менять не нужно.</p>
+        </header>
+
+        <form onSubmit={submit}>
+          <section className="builder-section">
+            <div className="builder-step"><b>01</b><span>Выбери кабинет</span></div>
+            <div className="office-picker">
+              {OFFICE_TEMPLATES.map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  className={officeKey === item.key ? "active" : ""}
+                  onClick={() => setOfficeKey(item.key)}
+                  aria-pressed={officeKey === item.key}
+                  title={item.description}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.image} alt="" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="builder-section builder-middle">
+            <div>
+              <div className="builder-step"><b>02</b><span>Выбери аватар</span></div>
+              <div className="avatar-picker">
+                {AVATAR_OPTIONS.map((item) => (
+                  <button
+                    type="button"
+                    key={item.key}
+                    className={avatarKey === item.key ? "active" : ""}
+                    onClick={() => setAvatarKey(item.key)}
+                    aria-pressed={avatarKey === item.key}
+                    title={item.label}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.image} alt="" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="builder-preview" aria-label={`Предпросмотр: ${avatar.label}, ${office.label}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="preview-office" src={office.image} alt="" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="preview-agent" src={avatar.image} alt="" />
+              <span><b>{avatar.label}</b><small>{office.label}</small></span>
+            </div>
+          </section>
+
+          <section className="builder-section">
+            <label className="builder-step" htmlFor="system-prompt"><b>03</b><span>System prompt</span></label>
+            <textarea
+              id="system-prompt"
+              value={systemPrompt}
+              onChange={(event) => setSystemPrompt(event.target.value)}
+              maxLength={6_000}
+              rows={7}
+              placeholder="Ты — специализированный агент… Твоя задача… Критерии готовности…"
+              required
+            />
+            <div className="builder-submit-row">
+              <p><i>◆</i> Prompt хранится только в localStorage этого браузера и не попадает в телеметрию.</p>
+              <span>{systemPrompt.length}/6000</span>
+              <button type="submit" disabled={systemPrompt.trim().length < 12}>+ СФОРМИРОВАТЬ АГЕНТА</button>
+            </div>
+          </section>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AssignmentInspector({
   agent,
   assignment,
   source,
   onClose,
+  onDelete,
   dialogRef,
 }: {
   agent: Agent;
   assignment?: RoutedAssignment;
   source?: Agent;
   onClose: () => void;
+  onDelete?: () => void;
   dialogRef: RefObject<HTMLElement | null>;
 }) {
+  const [deleteArmed, setDeleteArmed] = useState(false);
   const isOrchestrator = roleKey(agent.role) === "orchestrator";
   const progress = progressFor(agent);
   const style = { "--role-accent": roleColor(agent.role) } as CSSProperties;
@@ -547,6 +778,9 @@ function AssignmentInspector({
     : agent.presence === "standby"
       ? "Standby"
       : STATUS_META[agent.status].label;
+  const customOffice = agent.customOffice
+    ? OFFICE_TEMPLATES.find((item) => item.key === agent.customOffice)
+    : undefined;
 
   return (
     <aside
@@ -580,6 +814,27 @@ function AssignmentInspector({
       </div>
 
       {agent.stale && <div className="stale-warning">Сигнал давно не обновлялся.</div>}
+
+      {customOffice && (
+        <>
+          <section className="custom-office-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="custom-office-bg" src={customOffice.image} alt="" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="custom-office-agent" src={spriteFor(agent)} alt="" />
+            <div><span>ЦИФРОВОЙ КАБИНЕТ</span><b>{customOffice.label}</b><small>System prompt сохранён локально</small></div>
+          </section>
+          {onDelete && (
+            <button
+              type="button"
+              className={`delete-custom-agent${deleteArmed ? " is-armed" : ""}`}
+              onClick={() => deleteArmed ? onDelete() : setDeleteArmed(true)}
+            >
+              {deleteArmed ? "Нажми ещё раз — удалить" : "Удалить локальный профиль"}
+            </button>
+          )}
+        </>
+      )}
 
       <section className="task-card">
         <div className="task-card-heading">
@@ -624,6 +879,9 @@ export default function Home() {
   const [connection, setConnection] = useState<"connecting" | "live" | "offline">("connecting");
   const [viewMode, setViewMode] = useState<"live" | "demo">("live");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [customDefinitions, setCustomDefinitions] = useState<CustomAgentDefinition[]>([]);
+  const [customDefinitionsLoaded, setCustomDefinitionsLoaded] = useState(false);
   const [clock, setClock] = useState<Date | null>(null);
   const inspectorRef = useRef<HTMLElement>(null);
 
@@ -655,6 +913,39 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const restore = window.setTimeout(() => {
+      setCustomDefinitions(parseCustomAgents(
+        window.localStorage.getItem(CUSTOM_AGENTS_STORAGE_KEY),
+        ROSTER_AGENT_IDS,
+      ));
+      setCustomDefinitionsLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(restore);
+  }, []);
+
+  useEffect(() => {
+    if (!customDefinitionsLoaded) return;
+    try {
+      window.localStorage.setItem(
+        CUSTOM_AGENTS_STORAGE_KEY,
+        JSON.stringify(customDefinitions.slice(-CUSTOM_AGENT_LIMIT)),
+      );
+    } catch {
+      // A blocked or full localStorage must not break the observer UI.
+    }
+  }, [customDefinitions, customDefinitionsLoaded]);
+
+  useEffect(() => {
+    const syncAcrossTabs = (event: StorageEvent) => {
+      if (event.key === CUSTOM_AGENTS_STORAGE_KEY) {
+        setCustomDefinitions(parseCustomAgents(event.newValue, ROSTER_AGENT_IDS));
+      }
+    };
+    window.addEventListener("storage", syncAcrossTabs);
+    return () => window.removeEventListener("storage", syncAcrossTabs);
+  }, []);
+
+  useEffect(() => {
     const initialTick = window.setTimeout(() => setClock(new Date()), 0);
     const ticker = window.setInterval(() => setClock(new Date()), 1_000);
     return () => {
@@ -671,8 +962,13 @@ export default function Home() {
   const usingDemo = viewMode === "demo" || !hasLiveAgents;
   const state = usingDemo ? DEMO_STATE : (mergedLiveState as BureauState);
   const agents = useMemo(
-    () => state.agents.map((agent) => ({ ...agent, presence: agent.presence ?? "demo" })),
-    [state.agents],
+    () => [
+      ...state.agents.map((agent) => ({ ...agent, presence: agent.presence ?? "demo" })),
+      ...customDefinitions
+        .filter((definition) => !state.agents.some((agent) => agent.id === definition.id))
+        .map(customDefinitionToAgent),
+    ],
+    [customDefinitions, state.agents],
   );
   const stage = useMemo(() => arrangeStage(agents), [agents]);
   const assignments = useMemo(
@@ -696,6 +992,7 @@ export default function Home() {
     : stage.orchestrator;
   const liveCount = agents.filter((agent) => agent.presence === "live").length;
   const standbyCount = agents.filter((agent) => agent.presence === "standby").length;
+  const customCount = agents.filter((agent) => agent.presence === "custom").length;
   const activeCount = agents.filter((agent) => ACTIVE_STATUSES.has(agent.status)).length;
 
   useEffect(() => {
@@ -746,6 +1043,19 @@ export default function Home() {
     if (!hasLiveAgents) return;
     setSelectedId(null);
     setViewMode((mode) => (mode === "live" ? "demo" : "live"));
+  };
+
+  const createCustomAgent = (definition: CustomAgentDefinition) => {
+    setCustomDefinitions((current) => [
+      ...current.slice(-(CUSTOM_AGENT_LIMIT - 1)),
+      definition,
+    ]);
+    setSelectedId(definition.id);
+  };
+
+  const deleteCustomAgent = (agent: Agent) => {
+    setCustomDefinitions((current) => current.filter((item) => item.id !== agent.id));
+    setSelectedId(null);
   };
 
   return (
@@ -842,7 +1152,7 @@ export default function Home() {
           title={hasLiveAgents ? "Переключить live и demo" : "Collector недоступен — показан demo-режим"}
         >
           <i className={`connection-dot ${connection}`} />
-          <span><b>{usingDemo ? "DEMO" : "LIVE"}</b><small>{usingDemo ? `${agents.length} агентов` : `${liveCount} live · ${standbyCount} standby`}</small></span>
+          <span><b>{usingDemo ? "DEMO" : "LIVE"}</b><small>{usingDemo ? `${agents.length} агентов` : `${liveCount} live · ${standbyCount} standby${customCount ? ` · ${customCount} custom` : ""}`}</small></span>
         </button>
         <div className="hud-project"><small>ПРОЕКТ</small><strong>{state.project}</strong></div>
         <div className="hud-stat"><strong>{activeCount}</strong><small>активны</small></div>
@@ -869,6 +1179,16 @@ export default function Home() {
               </button>
             );
           })}
+          <button
+            type="button"
+            className="add-agent-button"
+            onClick={() => {
+              setSelectedId(null);
+              setBuilderOpen(true);
+            }}
+          >
+            <i>+</i><span><strong>Добавить агента</strong><small>кабинет · аватар · prompt</small></span>
+          </button>
         </div>
       </nav>
 
@@ -880,9 +1200,18 @@ export default function Home() {
             assignment={selectedAssignment}
             source={assignmentSource}
             onClose={() => setSelectedId(null)}
+            onDelete={selectedAgent.presence === "custom" ? () => deleteCustomAgent(selectedAgent) : undefined}
             dialogRef={inspectorRef}
           />
         </>
+      )}
+
+      {builderOpen && (
+        <AgentBuilder
+          existing={customDefinitions}
+          onCreate={createCustomAgent}
+          onClose={() => setBuilderOpen(false)}
+        />
       )}
     </main>
   );
