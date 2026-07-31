@@ -73,6 +73,8 @@ uses a read-only browser bridge to the same loopback collector. When this
 computer and the observer are running, `https://agent-bureau.vercel.app` shows
 the live shift; when they are not, it safely falls back to the demo snapshot.
 Telemetry remains on this computer: Vercel does not receive or store it.
+The first production visit may ask for loopback/local-network access; allow it
+for this exact site if you want the live view.
 
 ## Connecting live Codex events
 

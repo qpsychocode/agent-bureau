@@ -143,6 +143,10 @@ type StageSlot = "orchestrator" | WorkerSlot;
 
 const DEMO_STATE = demoState as BureauState;
 const COLLECTOR_URL = "http://127.0.0.1:7331/api/state";
+const LOOPBACK_FETCH_OPTIONS = {
+  cache: "no-store",
+  targetAddressSpace: "loopback",
+} as RequestInit & { targetAddressSpace: "loopback" };
 const AGENT_PROFILES_STORAGE_KEY = "agent-bureau.agent-profiles.v2";
 const LEGACY_CUSTOM_AGENTS_STORAGE_KEY = "agent-bureau.custom-agents.v1";
 const ROSTER_AGENT_IDS = new Set(DEMO_STATE.agents.map((agent) => agent.id));
@@ -1282,7 +1286,7 @@ export default function Home() {
     const sync = async () => {
       try {
         const response = await fetch(COLLECTOR_URL, {
-          cache: "no-store",
+          ...LOOPBACK_FETCH_OPTIONS,
           signal: AbortSignal.timeout(1_800),
         });
         if (!response.ok) throw new Error("collector_unavailable");

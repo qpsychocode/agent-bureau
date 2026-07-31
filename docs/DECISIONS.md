@@ -346,7 +346,9 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
 - **Public view:** the production Vercel page continues to fetch
   `http://127.0.0.1:7331` from the user's browser. The observer permits exact
   configured HTTPS origins to read state, rejects browser-origin writes, and
-  answers Private Network Access preflight. No telemetry is uploaded to Vercel.
+  answers Private Network Access preflight. The production fetch declares the
+  `loopback` target address space so supporting browsers can request the narrow
+  local-network permission. No telemetry is uploaded to Vercel.
 - **Privacy:** prompts, transcripts, hidden reasoning, tool arguments, paths,
   diffs, credentials, and file contents remain forbidden. Task titles must be
   concise safe summaries.

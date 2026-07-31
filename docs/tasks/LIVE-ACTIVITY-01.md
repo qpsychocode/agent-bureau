@@ -15,7 +15,9 @@ agent is doing, which phase is current, and where the Orchestrator sent work.
   basis. Keep telemetry neutral to the actual task outcome.
 - Let the public Vercel UI read the local observer directly from the user's
   browser through exact-origin, read-only CORS. This preserves local-only data
-  and avoids provisioning a cloud database merely for live viewing.
+  and avoids provisioning a cloud database merely for live viewing. Declare the
+  request target address space as `loopback` for current browser permission
+  handling.
 - Reset the current snapshot at a new run while retaining append-only history.
   Use a 180-second stale window so meaningful transitions do not disappear
   during normal implementation work.
