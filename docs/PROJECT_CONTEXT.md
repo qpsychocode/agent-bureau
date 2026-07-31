@@ -11,9 +11,8 @@ who is blocked, and which result has already been accepted.
 - Web UI: `http://localhost:3000`
 - Local collector: `http://127.0.0.1:7331`
 - Public source: `https://github.com/qpsychocode/agent-bureau`
-- Public web: `https://agent-bureau.vercel.app` (attempts the local read-only
-  browser bridge; demo fallback when browser policy or collector availability
-  blocks it)
+- Public web: `https://agent-bureau.vercel.app` (demo-only; it never contacts a
+  visitor's loopback collector)
 - Combined start: `start-office.command` or `npm run office`
 - Canonical style reference and English social image: `public/og.png`
   (`1672 × 941`)
@@ -133,12 +132,11 @@ disk.
   are tied to the `1672 × 941` aspect ratio. On narrow screens the full scene is
   scaled down, while overflow remains available in the digital annex and Team
   popover.
-- The public Vercel deployment reads `127.0.0.1` only from the user's browser,
-  with exact-origin read-only CORS and Private Network Access preflight support.
-  Browser local-network policy may still require the user to grant access; the
-  Codex in-app browser blocked this bridge during production QA.
-- The public page cannot show live work when this computer or observer is off;
-  that requires a separate cloud mirror and explicit privacy/cost consent.
+- The public Vercel deployment is intentionally disconnected from the local
+  collector. Only a page served from `localhost` reads `127.0.0.1`; the observer
+  rejects the public Vercel origin by default.
+- Remote live viewing requires a separately approved authenticated cloud mirror
+  and explicit privacy/cost consent.
 - `CREATE AGENT` creates a local configuration and visual entity but does not
   start an LLM: the static page has no authorized runtime bridge and deliberately
   makes no claim otherwise.

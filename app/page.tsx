@@ -1282,6 +1282,14 @@ export default function Home() {
   const teamButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    const isLocalOffice = new Set(["localhost", "127.0.0.1", "::1"]).has(
+      window.location.hostname,
+    );
+    if (!isLocalOffice) {
+      setConnection("offline");
+      return;
+    }
+
     let cancelled = false;
     const sync = async () => {
       try {

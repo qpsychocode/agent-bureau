@@ -70,6 +70,8 @@ test("removes starter-only preview code and metadata", async () => {
 
   assert.match(page, /http:\/\/127\.0\.0\.1:7331\/api\/state/);
   assert.match(page, /targetAddressSpace:\s*"loopback"/);
+  assert.match(page, /window\.location\.hostname/);
+  assert.match(page, /if \(!isLocalOffice\)/);
   assert.match(page, /src="\/office-departments-v3\.png"/);
   assert.match(page, /ROLE_SPRITES/);
   assert.match(page, /"design",\s*"copy",\s*"marketing",\s*"image"/);

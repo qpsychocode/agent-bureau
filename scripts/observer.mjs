@@ -21,7 +21,6 @@ const STALE_AFTER_MS = positiveInteger(
   DEFAULT_STALE_AFTER_MS,
 );
 const READ_ONLY_WEB_ORIGINS = new Set([
-  "https://agent-bureau.vercel.app",
   ...(process.env.BUREAU_READ_ONLY_ORIGINS || "")
     .split(",")
     .map((value) => value.trim())

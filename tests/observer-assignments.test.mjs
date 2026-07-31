@@ -147,11 +147,8 @@ test("collector tracks, sanitizes, and bounds real task assignments", async (con
   const publicRead = await fetch(`${endpoint}/api/state`, {
     headers: { Origin: "https://agent-bureau.vercel.app" },
   });
-  assert.equal(publicRead.status, 200);
-  assert.equal(
-    publicRead.headers.get("access-control-allow-origin"),
-    "https://agent-bureau.vercel.app",
-  );
+  assert.equal(publicRead.status, 403);
+  assert.equal(publicRead.headers.get("access-control-allow-origin"), null);
 
   const publicWrite = await fetch(`${endpoint}/api/events`, {
     method: "POST",
@@ -170,12 +167,9 @@ test("collector tracks, sanitizes, and bounds real task assignments", async (con
       "Access-Control-Request-Private-Network": "true",
     },
   });
-  assert.equal(privateNetworkPreflight.status, 204);
-  assert.equal(
-    privateNetworkPreflight.headers.get("access-control-allow-private-network"),
-    "true",
-  );
-  assert.equal(privateNetworkPreflight.headers.get("access-control-allow-methods"), "GET, OPTIONS");
+  assert.equal(privateNetworkPreflight.status, 403);
+  assert.equal(privateNetworkPreflight.headers.get("access-control-allow-private-network"), null);
+  assert.equal(privateNetworkPreflight.headers.get("access-control-allow-methods"), null);
 
   await postEvent(endpoint, {
     type: "run.started",

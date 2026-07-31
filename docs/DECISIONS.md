@@ -328,7 +328,7 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
 
 ## ADR-019 — Observable lifecycle states and a local read-only web bridge
 
-- **Status:** accepted
+- **Status:** superseded by ADR-020
 - **Date:** 2026-07-31
 - **Decision:** the scene derives a specific activity from sanitized lifecycle
   events, not from a generic busy flag. Planning, research, coding, design,
@@ -364,3 +364,28 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
   local browser QA confirms live labels, active routes, distinct animation
   names, the mobile activity strip, and reduced-motion support; production QA
   confirms the honest simulated fallback when loopback is blocked.
+
+## ADR-020 — Public deployment is disconnected from local Codex telemetry
+
+- **Status:** accepted
+- **Date:** 2026-08-01
+- **Area:** security, telemetry, deployment
+- **Context:** the public Vercel page could initiate a read-only request to the
+  loopback observer when opened on the same computer as Codex. Even though no
+  telemetry was uploaded to Vercel, the public origin remained connected to the
+  local observer through the browser.
+- **Decision:** only pages served from `localhost`, `127.0.0.1`, or `::1` may
+  poll the loopback collector. The observer no longer allowlists the production
+  Vercel origin by default. The public deployment is a demo-only visualization.
+- **Why:** a public site must not have ambient access to local Codex activity.
+  Keeping the collector loopback-only preserves the private local office without
+  exposing it to the hosted frontend.
+- **Alternatives:** removing Codex hooks entirely was rejected because it would
+  also disable the private local office; an authenticated cloud mirror remains
+  out of scope without explicit privacy and storage approval.
+- **Consequences:** live activity is visible at `http://localhost:3000` only.
+  Vercel shows simulated demo activity and cannot inspect or control local Codex.
+- **Evidence:** production-host gating in `app/page.tsx`; public-origin CORS
+  rejection in `scripts/observer.mjs`; render and observer integration tests.
+- **Revisit when:** the user explicitly approves an authenticated outbound-only
+  cloud transport with access controls and retention limits.
