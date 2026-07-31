@@ -12,12 +12,22 @@ import {
 import demoState from "./demo-state.json";
 import {
   CUSTOM_AGENT_LIMIT,
+  REASONING_SUGGESTIONS,
+  migrateLegacyAgentProfiles,
   matchLiveAgentsToRoster,
+  normalizeRuntimeProfile,
+  parseAgentProfileStore,
   parseCustomAgents,
+  parseRuntimeProviders,
   reserveUniqueAgentId,
+  serializeAgentProfileStore,
   type CustomAgentDefinition,
   type OfficeKey,
+  type ReasoningLevel,
+  type RuntimeProfile,
+  type RuntimeProviderDefinition,
 } from "./agent-data";
+import runtimeProvidersRaw from "../config/runtime-providers.json";
 
 type AgentStatus =
   | "idle"
@@ -68,6 +78,7 @@ type Agent = {
   customOffice?: OfficeKey;
   customAvatar?: OfficeKey;
   customPromptStored?: boolean;
+  customRuntime?: RuntimeProfile;
 };
 
 type TaskAssignment = {
@@ -106,8 +117,26 @@ type StageSlot = "orchestrator" | WorkerSlot;
 
 const DEMO_STATE = demoState as BureauState;
 const COLLECTOR_URL = "http://127.0.0.1:7331/api/state";
-const CUSTOM_AGENTS_STORAGE_KEY = "agent-bureau.custom-agents.v1";
+const AGENT_PROFILES_STORAGE_KEY = "agent-bureau.agent-profiles.v2";
+const LEGACY_CUSTOM_AGENTS_STORAGE_KEY = "agent-bureau.custom-agents.v1";
 const ROSTER_AGENT_IDS = new Set(DEMO_STATE.agents.map((agent) => agent.id));
+const FALLBACK_RUNTIME_PROVIDER: RuntimeProviderDefinition = {
+  id: "custom",
+  label: "Свой runtime",
+  badge: "CUSTOM",
+  adapterId: "custom-adapter",
+  adapterMode: "editable",
+  description: "Собственный CLI, SDK или локальный bridge",
+  modelPlaceholder: "Model ID твоего runtime",
+  defaultReasoning: "provider-default",
+  endpointMode: "optional",
+  credentialEnvMode: "optional",
+  credentialEnv: "",
+};
+const parsedRuntimeProviders = parseRuntimeProviders(runtimeProvidersRaw);
+const RUNTIME_PROVIDERS = parsedRuntimeProviders.length
+  ? parsedRuntimeProviders
+  : [FALLBACK_RUNTIME_PROVIDER];
 
 const ACTIVE_STATUSES = new Set<AgentStatus>([
   "planning",
@@ -191,6 +220,18 @@ const AVATAR_OPTIONS = OFFICE_TEMPLATES.map((office) => ({
   label: ROLE_LABELS[office.key] ?? office.label,
   image: ROLE_SPRITES[office.key],
 }));
+
+function runtimeProviderFor(providerId: string) {
+  return RUNTIME_PROVIDERS.find((provider) => provider.id === providerId) ?? {
+    ...FALLBACK_RUNTIME_PROVIDER,
+    id: providerId,
+    label: providerId === "unconfigured" ? "Runtime не настроен" : providerId,
+  };
+}
+
+function hasRuntimeProvider(providerId: string) {
+  return RUNTIME_PROVIDERS.some((provider) => provider.id === providerId);
+}
 
 const STAGE_SLOTS: Record<
   StageSlot,
@@ -333,22 +374,31 @@ function spriteFor(agent: Agent) {
 
 function customDefinitionToAgent(definition: CustomAgentDefinition): Agent {
   const office = OFFICE_TEMPLATES.find((item) => item.key === definition.officeKey);
+  const provider = runtimeProviderFor(definition.runtime.providerId);
+  const runtimeReady = definition.runtime.providerId !== "unconfigured" &&
+    hasRuntimeProvider(definition.runtime.providerId);
   return {
     id: definition.id,
     name: definition.name,
     role: definition.avatarKey,
     status: "idle",
     presence: "custom",
-    task: "Готов к подключению runtime",
-    summary: `Кастомный профиль · ${office?.label ?? "цифровой кабинет"}`,
-    model: "runtime не подключён",
-    effort: "из system prompt",
+    task: runtimeReady
+      ? `Профиль готов для ${provider.label}`
+      : definition.runtime.providerId === "unconfigured"
+        ? "Нужно выбрать runtime"
+        : "Adapter недоступен в текущем каталоге",
+    summary: `Кастомный профиль · ${office?.label ?? "цифровой кабинет"} · процесс не запущен`,
+    model: runtimeReady ? `${provider.label} · ${definition.runtime.model}` : "не выбрана",
+    effort: definition.runtime.reasoning,
+    phase: runtimeReady ? `adapter:${definition.runtime.adapterId}` : "runtime:unconfigured",
     progress: 0,
     elapsedSeconds: 0,
     stale: false,
     customOffice: definition.officeKey,
     customAvatar: definition.avatarKey,
     customPromptStored: true,
+    customRuntime: definition.runtime,
   };
 }
 
@@ -594,8 +644,15 @@ function AgentBuilder({
   onCreate: (definition: CustomAgentDefinition) => void;
   onClose: () => void;
 }) {
+  const initialProvider = RUNTIME_PROVIDERS[0] ?? FALLBACK_RUNTIME_PROVIDER;
   const [officeKey, setOfficeKey] = useState<OfficeKey>("coder");
   const [avatarKey, setAvatarKey] = useState<OfficeKey>("coder");
+  const [providerId, setProviderId] = useState(initialProvider.id);
+  const [adapterId, setAdapterId] = useState(initialProvider.adapterId);
+  const [model, setModel] = useState("");
+  const [reasoning, setReasoning] = useState<ReasoningLevel>(initialProvider.defaultReasoning);
+  const [endpoint, setEndpoint] = useState("");
+  const [credentialEnv, setCredentialEnv] = useState(initialProvider.credentialEnv);
   const [systemPrompt, setSystemPrompt] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -620,7 +677,7 @@ function AgentBuilder({
       if (event.key !== "Tab" || !dialog) return;
       const focusable = Array.from(
         dialog.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
       );
       if (!focusable.length) return;
@@ -644,10 +701,35 @@ function AgentBuilder({
 
   const office = OFFICE_TEMPLATES.find((item) => item.key === officeKey) ?? OFFICE_TEMPLATES[0];
   const avatar = AVATAR_OPTIONS.find((item) => item.key === avatarKey) ?? AVATAR_OPTIONS[0];
+  const provider = runtimeProviderFor(providerId);
+  const runtime = normalizeRuntimeProfile({
+    providerId,
+    adapterId,
+    model,
+    reasoning,
+    ...(provider.endpointMode !== "none" && endpoint.trim() ? { endpoint } : {}),
+    ...(provider.credentialEnvMode !== "none" && credentialEnv.trim() ? { credentialEnv } : {}),
+  });
+  const runtimeValid = Boolean(
+    runtime &&
+    (provider.endpointMode !== "required" || endpoint.trim()) &&
+    (provider.credentialEnvMode !== "required" || credentialEnv.trim()) &&
+    (provider.adapterMode !== "editable" || adapterId.trim()),
+  );
+
+  const chooseProvider = (nextProvider: RuntimeProviderDefinition) => {
+    setProviderId(nextProvider.id);
+    setAdapterId(nextProvider.adapterId);
+    setModel("");
+    setReasoning(nextProvider.defaultReasoning);
+    setEndpoint("");
+    setCredentialEnv(nextProvider.credentialEnvMode === "none" ? "" : nextProvider.credentialEnv);
+  };
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const prompt = systemPrompt.trim();
-    if (prompt.length < 12) return;
+    if (prompt.length < 12 || !runtime || !runtimeValid) return;
     const sameAvatarCount = existing.filter((item) => item.avatarKey === avatarKey).length;
     const baseName = ROLE_LABELS[avatarKey] ?? "Агент";
     const suffix = sameAvatarCount + 2;
@@ -656,6 +738,7 @@ function AgentBuilder({
       name: `${baseName} ${suffix}`,
       officeKey,
       avatarKey,
+      runtime,
       systemPrompt: prompt.slice(0, 6_000),
       createdAt: new Date().toISOString(),
     });
@@ -677,7 +760,7 @@ function AgentBuilder({
         <header className="builder-header">
           <span>КОНСТРУКТОР ПРОФИЛЯ</span>
           <h2 id="builder-title">Новый агент</h2>
-          <p>Кабинет + аватар + system prompt. Код проекта менять не нужно.</p>
+          <p>Кабинет + аватар + любой runtime + system prompt. Код интерфейса менять не нужно.</p>
         </header>
 
         <form onSubmit={submit}>
@@ -732,7 +815,97 @@ function AgentBuilder({
           </section>
 
           <section className="builder-section">
-            <label className="builder-step" htmlFor="system-prompt"><b>03</b><span>System prompt</span></label>
+            <div className="builder-step"><b>03</b><span>Настрой runtime</span></div>
+            <div className="provider-picker">
+              {RUNTIME_PROVIDERS.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={providerId === item.id ? "active" : ""}
+                  onClick={() => chooseProvider(item)}
+                  aria-pressed={providerId === item.id}
+                >
+                  <small>{item.badge}</small>
+                  <strong>{item.label}</strong>
+                  <span>{item.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="runtime-fields">
+              <label>
+                <span>Model ID <b>обязательно</b></span>
+                <input
+                  id="runtime-model"
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  maxLength={160}
+                  placeholder={provider.modelPlaceholder}
+                  required
+                />
+              </label>
+              <label>
+                <span>Reasoning / thinking</span>
+                <input
+                  id="runtime-reasoning"
+                  list="reasoning-suggestions"
+                  value={reasoning}
+                  onChange={(event) => setReasoning(event.target.value)}
+                  maxLength={32}
+                  required
+                />
+                <datalist id="reasoning-suggestions">
+                  {REASONING_SUGGESTIONS.map((item) => <option key={item} value={item} />)}
+                </datalist>
+              </label>
+              <label>
+                <span>Adapter ID</span>
+                <input
+                  id="runtime-adapter"
+                  value={adapterId}
+                  onChange={(event) => setAdapterId(event.target.value)}
+                  maxLength={80}
+                  readOnly={provider.adapterMode === "fixed"}
+                  required
+                />
+              </label>
+              {provider.endpointMode !== "none" && (
+                <label>
+                  <span>Endpoint {provider.endpointMode === "required" && <b>обязательно</b>}</span>
+                  <input
+                    id="runtime-endpoint"
+                    type="url"
+                    value={endpoint}
+                    onChange={(event) => setEndpoint(event.target.value)}
+                    maxLength={500}
+                    placeholder="http://127.0.0.1:11434/v1"
+                    required={provider.endpointMode === "required"}
+                  />
+                </label>
+              )}
+              {provider.credentialEnvMode !== "none" && (
+                <label>
+                  <span>
+                    Имя env-переменной <i>не ключ</i>
+                    {provider.credentialEnvMode === "required" && <b>обязательно</b>}
+                  </span>
+                  <input
+                    id="runtime-credential-env"
+                    value={credentialEnv}
+                    onChange={(event) => setCredentialEnv(event.target.value.toUpperCase())}
+                    maxLength={100}
+                    placeholder="MY_PROVIDER_API_KEY"
+                    pattern="(?!NEXT_PUBLIC_|VITE_|PUBLIC_)[A-Z_][A-Z0-9_]*"
+                    required={provider.credentialEnvMode === "required"}
+                  />
+                </label>
+              )}
+            </div>
+            <p className="runtime-safety"><i>◆</i> Здесь хранится только конфигурация. API-ключ вводить нельзя; локальный adapter сам читает указанную env-переменную.</p>
+          </section>
+
+          <section className="builder-section">
+            <label className="builder-step" htmlFor="system-prompt"><b>04</b><span>System prompt</span></label>
             <textarea
               id="system-prompt"
               value={systemPrompt}
@@ -745,7 +918,7 @@ function AgentBuilder({
             <div className="builder-submit-row">
               <p><i>◆</i> Prompt хранится только в localStorage этого браузера и не попадает в телеметрию.</p>
               <span>{systemPrompt.length}/6000</span>
-              <button type="submit" disabled={systemPrompt.trim().length < 12}>+ СФОРМИРОВАТЬ АГЕНТА</button>
+              <button type="submit" disabled={systemPrompt.trim().length < 12 || !runtimeValid}>+ СФОРМИРОВАТЬ АГЕНТА</button>
             </div>
           </section>
         </form>
@@ -781,6 +954,12 @@ function AssignmentInspector({
   const customOffice = agent.customOffice
     ? OFFICE_TEMPLATES.find((item) => item.key === agent.customOffice)
     : undefined;
+  const customProvider = agent.customRuntime
+    ? runtimeProviderFor(agent.customRuntime.providerId)
+    : undefined;
+  const customProviderAvailable = agent.customRuntime
+    ? hasRuntimeProvider(agent.customRuntime.providerId)
+    : false;
 
   return (
     <aside
@@ -824,6 +1003,21 @@ function AssignmentInspector({
             <img className="custom-office-agent" src={spriteFor(agent)} alt="" />
             <div><span>ЦИФРОВОЙ КАБИНЕТ</span><b>{customOffice.label}</b><small>System prompt сохранён локально</small></div>
           </section>
+          {agent.customRuntime && customProvider && (
+            <section className="runtime-profile-card">
+              <header><span>ЗАПРОШЕННЫЙ RUNTIME</span><em>CONFIG ONLY</em></header>
+              <div className="runtime-profile-title"><b>{customProvider.label}</b><code>{agent.customRuntime.adapterId}</code></div>
+              <dl>
+                <div><dt>Model ID</dt><dd>{agent.customRuntime.model}</dd></div>
+                <div><dt>Reasoning</dt><dd>{agent.customRuntime.reasoning}</dd></div>
+                <div><dt>Endpoint</dt><dd>{agent.customRuntime.endpoint || "adapter default"}</dd></div>
+                <div><dt>Credentials</dt><dd>{agent.customRuntime.credentialEnv ? `$${agent.customRuntime.credentialEnv}` : "runtime session"}</dd></div>
+              </dl>
+              <p>{customProviderAvailable
+                ? "Профиль сохранён. Фактическая модель появится только после подтверждения локального adapter."
+                : "Provider отсутствует в текущем каталоге: конфигурация сохранена, но adapter недоступен."}</p>
+            </section>
+          )}
           {onDelete && (
             <button
               type="button"
@@ -850,13 +1044,13 @@ function AssignmentInspector({
       )}
 
       <section className="progress-block">
-        <div><span>Фаза: {agent.phase?.replace(/^tool:/, "") || STATUS_META[agent.status].short}</span><strong>{progress}%</strong></div>
+        <div><span>Фаза: {agent.phase?.replace(/^(tool:|adapter:|runtime:)/, "") || STATUS_META[agent.status].short}</span><strong>{progress}%</strong></div>
         <div className="progress-track" aria-label={`Прогресс ${progress}%`}><i style={{ width: `${progress}%` }} /></div>
       </section>
 
       <dl className="detail-grid">
-        <div><dt>Модель</dt><dd>{agent.model || "не указана"}</dd></div>
-        <div><dt>Reasoning</dt><dd>{agent.effort || "по умолчанию"}</dd></div>
+        <div><dt>{agent.customRuntime ? "Запрошенная модель" : "Модель"}</dt><dd>{agent.model || "не указана"}</dd></div>
+        <div><dt>{agent.customRuntime ? "Запрошенный reasoning" : "Reasoning"}</dt><dd>{agent.effort || "по умолчанию"}</dd></div>
         <div><dt>В работе</dt><dd>{formatDuration(agent.elapsedSeconds)}</dd></div>
         <div><dt>Передано</dt><dd>{formatMoment(assignment?.assignedAt ?? agent.startedAt)}</dd></div>
       </dl>
@@ -914,10 +1108,25 @@ export default function Home() {
 
   useEffect(() => {
     const restore = window.setTimeout(() => {
-      setCustomDefinitions(parseCustomAgents(
-        window.localStorage.getItem(CUSTOM_AGENTS_STORAGE_KEY),
+      const current = parseAgentProfileStore(
+        window.localStorage.getItem(AGENT_PROFILES_STORAGE_KEY),
         ROSTER_AGENT_IDS,
-      ));
+        RUNTIME_PROVIDERS,
+      );
+      if (current.valid) {
+        setCustomDefinitions(current.profiles);
+        setCustomDefinitionsLoaded(true);
+        return;
+      }
+
+      const legacyValue = window.localStorage.getItem(LEGACY_CUSTOM_AGENTS_STORAGE_KEY);
+      const legacyProfiles = migrateLegacyAgentProfiles(
+        legacyValue,
+        (value) => window.localStorage.setItem(AGENT_PROFILES_STORAGE_KEY, value),
+        () => window.localStorage.removeItem(LEGACY_CUSTOM_AGENTS_STORAGE_KEY),
+        ROSTER_AGENT_IDS,
+      );
+      setCustomDefinitions(legacyProfiles);
       setCustomDefinitionsLoaded(true);
     }, 0);
     return () => window.clearTimeout(restore);
@@ -927,8 +1136,8 @@ export default function Home() {
     if (!customDefinitionsLoaded) return;
     try {
       window.localStorage.setItem(
-        CUSTOM_AGENTS_STORAGE_KEY,
-        JSON.stringify(customDefinitions.slice(-CUSTOM_AGENT_LIMIT)),
+        AGENT_PROFILES_STORAGE_KEY,
+        serializeAgentProfileStore(customDefinitions),
       );
     } catch {
       // A blocked or full localStorage must not break the observer UI.
@@ -937,7 +1146,13 @@ export default function Home() {
 
   useEffect(() => {
     const syncAcrossTabs = (event: StorageEvent) => {
-      if (event.key === CUSTOM_AGENTS_STORAGE_KEY) {
+      if (event.key === AGENT_PROFILES_STORAGE_KEY) {
+        const next = parseAgentProfileStore(event.newValue, ROSTER_AGENT_IDS, RUNTIME_PROVIDERS);
+        if (next.valid) setCustomDefinitions(next.profiles);
+      } else if (
+        event.key === LEGACY_CUSTOM_AGENTS_STORAGE_KEY &&
+        window.localStorage.getItem(AGENT_PROFILES_STORAGE_KEY) === null
+      ) {
         setCustomDefinitions(parseCustomAgents(event.newValue, ROSTER_AGENT_IDS));
       }
     };
@@ -1187,7 +1402,7 @@ export default function Home() {
               setBuilderOpen(true);
             }}
           >
-            <i>+</i><span><strong>Добавить агента</strong><small>кабинет · аватар · prompt</small></span>
+            <i>+</i><span><strong>Добавить агента</strong><small>аватар · runtime · модель</small></span>
           </button>
         </div>
       </nav>

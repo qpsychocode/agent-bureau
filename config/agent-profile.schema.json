@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent Bureau custom agent profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "officeKey", "avatarKey", "runtime", "systemPrompt", "createdAt"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^custom-[a-z0-9-]{6,90}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "officeKey": { "$ref": "#/$defs/officeKey" },
+    "avatarKey": { "$ref": "#/$defs/officeKey" },
+    "runtime": { "$ref": "#/$defs/runtime" },
+    "systemPrompt": { "type": "string", "minLength": 12, "maxLength": 6000 },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "officeKey": {
+      "enum": ["orchestrator", "researcher", "reviewer", "coder", "designer", "copywriter", "marketing", "image"]
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerId", "adapterId", "model", "reasoning"],
+      "properties": {
+        "providerId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$" },
+        "adapterId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,79}$" },
+        "model": { "type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
+        "reasoning": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$" },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500,
+          "pattern": "^https?://(?![^/?#\\s]*@)[^/?#\\s]+(?:/[^?#\\s]*)?$"
+        },
+        "credentialEnv": { "type": "string", "pattern": "^(?!NEXT_PUBLIC_|VITE_|PUBLIC_)[A-Z_][A-Z0-9_]{0,99}$" }
+      }
+    }
+  }
+}

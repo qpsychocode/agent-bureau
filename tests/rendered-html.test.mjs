@@ -54,11 +54,13 @@ test("server-renders the Agent Bureau office", async () => {
 });
 
 test("removes starter-only preview code and metadata", async () => {
-  const [css, page, layout, packageJson] = await Promise.all([
+  const [css, page, layout, packageJson, runtimeCatalog, profileSchema] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../config/runtime-providers.json", import.meta.url), "utf8"),
+    readFile(new URL("../config/agent-profile.schema.json", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /http:\/\/127\.0\.0\.1:7331\/api\/state/);
@@ -70,13 +72,18 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(page, /mergeLiveWithRoster/);
   assert.match(page, /presence:\s*"standby"/);
   assert.match(page, /agent\.presence !== "standby"/);
-  assert.match(page, /CUSTOM_AGENTS_STORAGE_KEY/);
+  assert.match(page, /AGENT_PROFILES_STORAGE_KEY/);
+  assert.match(page, /LEGACY_CUSTOM_AGENTS_STORAGE_KEY/);
   assert.match(page, /OFFICE_TEMPLATES/);
+  assert.match(page, /RUNTIME_PROVIDERS/);
+  assert.match(page, /OpenAI-compatible|runtimeProvidersRaw/);
+  assert.match(page, /Имя env-переменной/);
   assert.match(page, /function AgentBuilder/);
   assert.match(page, /Prompt хранится только в localStorage/);
   const customAdapter = page.match(/function customDefinitionToAgent[\s\S]*?\n}\n\nfunction mergeLiveWithRoster/)?.[0] ?? "";
   assert.ok(customAdapter);
   assert.doesNotMatch(customAdapter, /definition\.systemPrompt/);
+  assert.doesNotMatch(page, /apiKey\s*[:=]/i);
   assert.doesNotMatch(page, /PixelAgent|robot-head|OfficeRoom/);
   assert.match(css, /@keyframes agent-working/);
   assert.match(css, /@keyframes agent-arrive/);
@@ -85,6 +92,8 @@ test("removes starter-only preview code and metadata", async () => {
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview/);
+  assert.equal(JSON.parse(runtimeCatalog).length, 5);
+  assert.equal(JSON.parse(profileSchema).properties.runtime.$ref, "#/$defs/runtime");
 
   await assert.rejects(
     access(new URL("app/_sites-preview", templateRoot)),

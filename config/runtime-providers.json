@@ -1,0 +1,67 @@
+[
+  {
+    "id": "codex",
+    "label": "Codex / OpenAI",
+    "badge": "OPENAI",
+    "adapterId": "codex-cli",
+    "adapterMode": "fixed",
+    "description": "Codex CLI или собственный OpenAI adapter",
+    "modelPlaceholder": "Model ID из доступного тебе Codex/OpenAI runtime",
+    "defaultReasoning": "medium",
+    "endpointMode": "none",
+    "credentialEnvMode": "optional",
+    "credentialEnv": "OPENAI_API_KEY"
+  },
+  {
+    "id": "cursor",
+    "label": "Cursor",
+    "badge": "CURSOR",
+    "adapterId": "cursor-agent-cli",
+    "adapterMode": "fixed",
+    "description": "Модели, доступные в твоём аккаунте Cursor",
+    "modelPlaceholder": "Точный model slug из Cursor models",
+    "defaultReasoning": "high",
+    "endpointMode": "none",
+    "credentialEnvMode": "none",
+    "credentialEnv": ""
+  },
+  {
+    "id": "claude-code",
+    "label": "Claude Code",
+    "badge": "ANTHROPIC",
+    "adapterId": "claude-code-cli",
+    "adapterMode": "fixed",
+    "description": "Claude Code CLI или Anthropic adapter",
+    "modelPlaceholder": "Model ID из доступного тебе Claude runtime",
+    "defaultReasoning": "medium",
+    "endpointMode": "none",
+    "credentialEnvMode": "optional",
+    "credentialEnv": "ANTHROPIC_API_KEY"
+  },
+  {
+    "id": "openai-compatible",
+    "label": "OpenAI-compatible",
+    "badge": "LOCAL / API",
+    "adapterId": "openai-compatible",
+    "adapterMode": "fixed",
+    "description": "Ollama, vLLM, OpenRouter, DeepSeek, Qwen, GLM и другие",
+    "modelPlaceholder": "Любой model ID, который понимает endpoint",
+    "defaultReasoning": "provider-default",
+    "endpointMode": "required",
+    "credentialEnvMode": "optional",
+    "credentialEnv": "OPENAI_API_KEY"
+  },
+  {
+    "id": "custom",
+    "label": "Свой runtime",
+    "badge": "CUSTOM",
+    "adapterId": "custom-adapter",
+    "adapterMode": "editable",
+    "description": "Собственный CLI, SDK или локальный bridge",
+    "modelPlaceholder": "Model ID твоего runtime",
+    "defaultReasoning": "provider-default",
+    "endpointMode": "optional",
+    "credentialEnvMode": "optional",
+    "credentialEnv": ""
+  }
+]
