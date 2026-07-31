@@ -69,12 +69,12 @@ The `office` command starts both:
 - the event collector on `127.0.0.1:7331`.
 
 Both addresses are available only on this computer. The public Vercel site
-uses a read-only browser bridge to the same loopback collector. When this
-computer and the observer are running, `https://agent-bureau.vercel.app` shows
-the live shift; when they are not, it safely falls back to the demo snapshot.
-Telemetry remains on this computer: Vercel does not receive or store it.
-The first production visit may ask for loopback/local-network access; allow it
-for this exact site if you want the live view.
+attempts a read-only browser bridge to the same loopback collector and otherwise
+falls back to the demo snapshot. Chrome-family browsers may ask for
+loopback/local-network access; Safari and the Codex in-app browser can block the
+bridge. In that case use `http://localhost:3000` for live data. A guaranteed
+cross-browser Vercel feed requires an explicitly approved cloud mirror.
+Telemetry is not uploaded to Vercel by the current implementation.
 
 ## Connecting live Codex events
 

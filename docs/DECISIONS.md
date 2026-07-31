@@ -355,7 +355,12 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
 - **Fallback:** when the local collector or browser permission is unavailable,
   the public page honestly displays the simulated shift. Viewing while the
   computer is offline requires a separately approved durable cloud mirror.
+- **Observed compatibility:** production QA in the Codex in-app browser blocked
+  the HTTPS-to-loopback request even with the address-space hint and CORS/PNA
+  response. Therefore the local bridge is an optional optimization, not the
+  guaranteed public transport.
 - **Verification:** reducer tests cover tool start/finish and run reset; CORS
   tests cover production read, write rejection, and private-network preflight;
-  browser QA confirms live labels, active routes, distinct animation names,
-  the mobile activity strip, and reduced-motion support.
+  local browser QA confirms live labels, active routes, distinct animation
+  names, the mobile activity strip, and reduced-motion support; production QA
+  confirms the honest simulated fallback when loopback is blocked.

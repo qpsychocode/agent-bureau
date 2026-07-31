@@ -39,6 +39,9 @@ agent is doing, which phase is current, and where the Orchestrator sent work.
 - Browser QA shows the Orchestrator working, completed specialists, a planning
   Verifier, three active routes, distinct animation names, and a mobile activity
   strip.
+- Production Vercel QA in the Codex in-app browser blocked the loopback request
+  and correctly showed `SIMULATED`. Guaranteed Vercel live state is pending
+  explicit authorization to create a third-party durable store.
 - Independent Verifier verdict is recorded before release.
 
 ## Verification

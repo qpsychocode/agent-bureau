@@ -11,8 +11,9 @@ who is blocked, and which result has already been accepted.
 - Web UI: `http://localhost:3000`
 - Local collector: `http://127.0.0.1:7331`
 - Public source: `https://github.com/qpsychocode/agent-bureau`
-- Public web: `https://agent-bureau.vercel.app` (live through the local read-only
-  browser bridge; demo fallback while the collector is offline)
+- Public web: `https://agent-bureau.vercel.app` (attempts the local read-only
+  browser bridge; demo fallback when browser policy or collector availability
+  blocks it)
 - Combined start: `start-office.command` or `npm run office`
 - Canonical style reference and English social image: `public/og.png`
   (`1672 × 941`)
@@ -134,7 +135,8 @@ disk.
   popover.
 - The public Vercel deployment reads `127.0.0.1` only from the user's browser,
   with exact-origin read-only CORS and Private Network Access preflight support.
-  Browser local-network policy may still require the user to grant access.
+  Browser local-network policy may still require the user to grant access; the
+  Codex in-app browser blocked this bridge during production QA.
 - The public page cannot show live work when this computer or observer is off;
   that requires a separate cloud mirror and explicit privacy/cost consent.
 - `CREATE AGENT` creates a local configuration and visual entity but does not
