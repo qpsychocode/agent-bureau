@@ -1,0 +1,56 @@
+[features]
+hooks = true
+
+[[hooks.SessionStart]]
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.SessionEnd]]
+[[hooks.SessionEnd.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 3
+
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.SubagentStart]]
+[[hooks.SubagentStart.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.SubagentStop]]
+[[hooks.SubagentStop.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.PreToolUse]]
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.PermissionRequest]]
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.PostToolUse]]
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = '/bin/zsh "$(git rev-parse --show-toplevel)/.codex/hooks/bureau-hook.sh"'
+timeout = 2

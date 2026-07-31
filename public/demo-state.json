@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "project": "Agent Bureau",
+  "runId": "demo-office",
+  "mode": "demo",
+  "updatedAt": "2026-07-31T12:00:00.000Z",
+  "agents": [
+    {
+      "id": "orchestrator",
+      "name": "Оркестратор",
+      "role": "orchestrator",
+      "status": "planning",
+      "taskId": "PLAN-01",
+      "task": "Распределяет задачи между агентами",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "summary": "Собирает план и выбирает исполнителей",
+      "stale": false,
+      "elapsedSeconds": 92
+    },
+    {
+      "id": "coder-1",
+      "name": "Кодер",
+      "role": "coder",
+      "status": "working",
+      "taskId": "DEV-21",
+      "task": "Подключить живой локальный collector",
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "summary": "Реализует API событий и snapshot состояния",
+      "stale": false,
+      "elapsedSeconds": 248
+    },
+    {
+      "id": "designer-1",
+      "name": "Дизайнер",
+      "role": "designer",
+      "status": "working",
+      "taskId": "UI-14",
+      "task": "Собрать каноническую pixel-office сцену",
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "summary": "Настраивает комнаты и анимации статусов",
+      "stale": false,
+      "elapsedSeconds": 174
+    },
+    {
+      "id": "researcher-1",
+      "name": "Ресерчер",
+      "role": "researcher",
+      "status": "working",
+      "taskId": "RSH-07",
+      "task": "Проверить профиль Grok 4.5 High Fast",
+      "model": "cursor-grok-4.5-high-fast",
+      "effort": "high",
+      "phase": "research",
+      "summary": "Сверяет официальные источники Cursor и xAI",
+      "stale": false,
+      "elapsedSeconds": 138
+    },
+    {
+      "id": "reviewer-1",
+      "name": "Верификатор",
+      "role": "reviewer",
+      "status": "reviewing",
+      "taskId": "QA-21",
+      "task": "Верифицировать интерфейс и телеметрию",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "summary": "Сверяет результат с критериями приёмки",
+      "review": {
+        "status": "reviewing",
+        "reviewer": "reviewer",
+        "attempts": 1
+      },
+      "stale": false,
+      "elapsedSeconds": 61
+    },
+    {
+      "id": "copywriter-1",
+      "name": "Копирайтер",
+      "role": "copywriter",
+      "status": "idle",
+      "task": "Ожидает новую задачу",
+      "model": "luna",
+      "effort": "medium",
+      "summary": "Свободен",
+      "stale": false,
+      "elapsedSeconds": 0
+    }
+  ],
+  "assignments": [
+    {
+      "id": "assignment-dev-21",
+      "taskId": "DEV-21",
+      "fromAgentId": "orchestrator",
+      "toAgentId": "coder-1",
+      "title": "Подключить живой локальный collector",
+      "summary": "Связать безопасный snapshot состояния с интерфейсом и сохранить demo fallback.",
+      "status": "working",
+      "assignedAt": "2026-07-31T11:52:00.000Z",
+      "updatedAt": "2026-07-31T12:00:00.000Z"
+    },
+    {
+      "id": "assignment-ui-14",
+      "taskId": "UI-14",
+      "fromAgentId": "orchestrator",
+      "toAgentId": "designer-1",
+      "title": "Собрать каноническую pixel-office сцену",
+      "summary": "Использовать точный public/og.png как сцену и добавить поверх только интерактивные зоны, иерархию и передачу задач.",
+      "status": "working",
+      "assignedAt": "2026-07-31T11:54:00.000Z",
+      "updatedAt": "2026-07-31T12:00:00.000Z"
+    },
+    {
+      "id": "assignment-rsh-07",
+      "taskId": "RSH-07",
+      "fromAgentId": "orchestrator",
+      "toAgentId": "researcher-1",
+      "title": "Проверить профиль Grok 4.5 High Fast",
+      "summary": "Сверить доступный Cursor profile с первичными источниками и зафиксировать подтверждённую конфигурацию.",
+      "status": "working",
+      "assignedAt": "2026-07-31T11:56:00.000Z",
+      "updatedAt": "2026-07-31T12:00:00.000Z"
+    },
+    {
+      "id": "assignment-qa-21",
+      "taskId": "QA-21",
+      "fromAgentId": "orchestrator",
+      "toAgentId": "reviewer-1",
+      "title": "Верифицировать интерфейс и телеметрию",
+      "summary": "Проверить соответствие канонической сцене, читаемость назначения задач и критерии безопасного read-only observer.",
+      "status": "reviewing",
+      "assignedAt": "2026-07-31T11:58:00.000Z",
+      "updatedAt": "2026-07-31T12:00:00.000Z"
+    }
+  ]
+}
