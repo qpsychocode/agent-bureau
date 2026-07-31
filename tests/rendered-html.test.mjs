@@ -37,6 +37,16 @@ test("server-renders the Agent Bureau office", async () => {
   assert.match(html, /МАРШРУТЫ ЗАДАЧ/);
   assert.match(html, /НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА/);
   assert.match(html, /ПУЛ АГЕНТОВ/);
+  for (const agent of [
+    "Оркестратор",
+    "Кодер",
+    "Дизайнер",
+    "Ресерчер",
+    "Верификатор",
+    "Копирайтер",
+  ]) {
+    assert.match(html, new RegExp(agent));
+  }
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -51,6 +61,9 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(page, /http:\/\/127\.0\.0\.1:7331\/api\/state/);
   assert.match(page, /src="\/og\.png"/);
   assert.match(page, /TaskAssignment|task-packet/);
+  assert.match(page, /mergeLiveWithRoster/);
+  assert.match(page, /presence:\s*"standby"/);
+  assert.match(page, /agent\.presence !== "standby"/);
   assert.doesNotMatch(page, /PixelAgent|agent-sprite|robot-head|OfficeRoom/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(layout, /Агентское бюро — живой офис/);

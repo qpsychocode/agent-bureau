@@ -1,7 +1,13 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 import demoState from "./demo-state.json";
 
 type AgentStatus =
@@ -21,6 +27,8 @@ type AssignmentStatus =
   | "blocked"
   | "done";
 
+type Presence = "demo" | "live" | "standby";
+
 type Review = {
   status?: string;
   verdict?: string;
@@ -30,9 +38,11 @@ type Review = {
 
 type Agent = {
   id: string;
+  sourceId?: string;
   name: string;
   role: string;
   status: AgentStatus;
+  presence?: Presence;
   taskId?: string;
   task?: string;
   model?: string;
@@ -60,9 +70,7 @@ type TaskAssignment = {
   updatedAt: string;
 };
 
-type RoutedAssignment = TaskAssignment & {
-  inferred?: boolean;
-};
+type RoutedAssignment = TaskAssignment & { inferred?: boolean };
 
 type BureauState = {
   version: number;
@@ -78,7 +86,6 @@ type WorkerSlot = "research" | "code" | "review" | "creative";
 type StageSlot = "orchestrator" | WorkerSlot;
 
 const DEMO_STATE = demoState as BureauState;
-
 const COLLECTOR_URL = "http://127.0.0.1:7331/api/state";
 
 const ACTIVE_STATUSES = new Set<AgentStatus>([
@@ -120,7 +127,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  orchestrator: "#f0b25e",
+  orchestrator: "#f3b662",
   coder: "#6fe0ae",
   designer: "#b59cff",
   image: "#ef8d70",
@@ -135,41 +142,11 @@ const STAGE_SLOTS: Record<
   StageSlot,
   { x: number; y: number; width: number; height: number; label: string }
 > = {
-  orchestrator: {
-    x: 44,
-    y: 24,
-    width: 18,
-    height: 29,
-    label: "Центр управления",
-  },
-  research: {
-    x: 72,
-    y: 24,
-    width: 18,
-    height: 29,
-    label: "Исследовательский кабинет",
-  },
-  code: {
-    x: 20,
-    y: 61,
-    width: 21,
-    height: 32,
-    label: "Левое рабочее место",
-  },
-  review: {
-    x: 45,
-    y: 61,
-    width: 20,
-    height: 32,
-    label: "Центральное рабочее место",
-  },
-  creative: {
-    x: 71,
-    y: 61,
-    width: 21,
-    height: 32,
-    label: "Правая студия",
-  },
+  orchestrator: { x: 44, y: 19, width: 18, height: 32, label: "Центр управления" },
+  research: { x: 72, y: 30, width: 18, height: 23, label: "Исследовательский кабинет" },
+  code: { x: 20, y: 61, width: 21, height: 32, label: "Разработка" },
+  review: { x: 45, y: 61, width: 20, height: 32, label: "Верификация" },
+  creative: { x: 71, y: 61, width: 21, height: 32, label: "Креативная студия" },
 };
 
 const WORKER_SLOTS: WorkerSlot[] = ["research", "code", "review", "creative"];
@@ -193,10 +170,12 @@ function normalizeState(value: unknown): BureauState | null {
       return (
         typeof agent.id === "string" &&
         typeof agent.name === "string" &&
+        typeof agent.role === "string" &&
         isAgentStatus(agent.status)
       );
     })
-    .slice(0, 200);
+    .slice(0, 200)
+    .map((agent) => ({ ...agent, presence: "live" as const, sourceId: agent.id }));
 
   const assignments = Array.isArray(candidate.assignments)
     ? candidate.assignments
@@ -216,14 +195,11 @@ function normalizeState(value: unknown): BureauState | null {
 
   return {
     version: 1,
-    project:
-      typeof candidate.project === "string" ? candidate.project : "Agent Bureau",
+    project: typeof candidate.project === "string" ? candidate.project : "Agent Bureau",
     runId: typeof candidate.runId === "string" ? candidate.runId : null,
     mode: "live",
     updatedAt:
-      typeof candidate.updatedAt === "string"
-        ? candidate.updatedAt
-        : new Date().toISOString(),
+      typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString(),
     agents,
     assignments,
   };
@@ -231,52 +207,36 @@ function normalizeState(value: unknown): BureauState | null {
 
 function roleKey(role: string) {
   const normalized = role.trim().toLowerCase();
-  if (normalized.includes("orchestrat") || normalized.includes("оркестр")) {
-    return "orchestrator";
-  }
+  if (normalized.includes("orchestrat") || normalized.includes("оркестр")) return "orchestrator";
   if (
     normalized.includes("review") ||
     normalized.includes("verif") ||
     normalized.includes("вериф") ||
     normalized.includes("провер")
-  ) {
-    return "reviewer";
-  }
-  if (normalized.includes("design") || normalized.includes("дизайн")) {
-    return "designer";
-  }
+  ) return "reviewer";
+  if (normalized.includes("design") || normalized.includes("дизайн")) return "designer";
   if (
     normalized.includes("image") ||
     normalized.includes("illustr") ||
     normalized.includes("иллюстр")
-  ) {
-    return "image";
-  }
+  ) return "image";
   if (
     normalized.includes("copy") ||
     normalized.includes("writer") ||
     normalized.includes("копирай")
-  ) {
-    return "copywriter";
-  }
-  if (normalized.includes("market") || normalized.includes("маркет")) {
-    return "marketing";
-  }
+  ) return "copywriter";
+  if (normalized.includes("market") || normalized.includes("маркет")) return "marketing";
   if (
     normalized.includes("research") ||
     normalized.includes("исслед") ||
     normalized.includes("ресерч")
-  ) {
-    return "researcher";
-  }
+  ) return "researcher";
   if (
     normalized.includes("code") ||
     normalized.includes("develop") ||
     normalized.includes("разработ") ||
     normalized.includes("кодер")
-  ) {
-    return "coder";
-  }
+  ) return "coder";
   return normalized || "agent";
 }
 
@@ -288,14 +248,78 @@ function roleColor(role: string) {
   return ROLE_COLORS[roleKey(role)] ?? ROLE_COLORS.agent;
 }
 
+function mergeLiveWithRoster(live: BureauState): BureauState {
+  const sourceToRoster = new Map<string, string>();
+  const usedLiveIds = new Set<string>();
+
+  const roster = DEMO_STATE.agents.map<Agent>((base) => {
+    const liveAgent = live.agents.find((candidate) => {
+      if (usedLiveIds.has(candidate.id)) return false;
+      return candidate.id === base.id || roleKey(candidate.role) === roleKey(base.role);
+    });
+
+    if (liveAgent) {
+      usedLiveIds.add(liveAgent.id);
+      sourceToRoster.set(liveAgent.id, base.id);
+      return {
+        ...base,
+        ...liveAgent,
+        id: base.id,
+        sourceId: liveAgent.id,
+        presence: "live",
+      };
+    }
+
+    return {
+      ...base,
+      status: "idle",
+      presence: "standby",
+      taskId: undefined,
+      task: "Ждёт живого назначения",
+      summary: "Постоянный состав бюро; живого события пока нет",
+      phase: undefined,
+      progress: 0,
+      startedAt: undefined,
+      completedAt: undefined,
+      updatedAt: live.updatedAt,
+      elapsedSeconds: 0,
+      stale: false,
+      review: undefined,
+    };
+  });
+
+  const extras = live.agents
+    .filter((agent) => !usedLiveIds.has(agent.id))
+    .map<Agent>((agent) => {
+      sourceToRoster.set(agent.id, agent.id);
+      return { ...agent, sourceId: agent.id, presence: "live" };
+    });
+
+  const validIds = new Set([...roster, ...extras].map((agent) => agent.id));
+  const assignments = (live.assignments ?? [])
+    .map((assignment) => ({
+      ...assignment,
+      fromAgentId: assignment.fromAgentId
+        ? sourceToRoster.get(assignment.fromAgentId) ?? assignment.fromAgentId
+        : undefined,
+      toAgentId: sourceToRoster.get(assignment.toAgentId) ?? assignment.toAgentId,
+    }))
+    .filter((assignment) => validIds.has(assignment.toAgentId));
+
+  return {
+    ...live,
+    agents: [...roster, ...extras],
+    assignments,
+    mode: "live",
+  };
+}
+
 function preferredSlot(agent: Agent): WorkerSlot | null {
   const key = roleKey(agent.role);
   if (key === "researcher") return "research";
   if (key === "coder") return "code";
   if (key === "reviewer") return "review";
-  if (["designer", "image", "copywriter", "marketing"].includes(key)) {
-    return "creative";
-  }
+  if (["designer", "image", "copywriter", "marketing"].includes(key)) return "creative";
   return null;
 }
 
@@ -308,15 +332,9 @@ function progressFor(agent: Agent) {
   if (typeof agent.progress === "number") {
     return Math.max(0, Math.min(100, Math.round(agent.progress)));
   }
-  return {
-    idle: 0,
-    planning: 18,
-    working: 54,
-    reviewing: 78,
-    revision: 66,
-    blocked: 42,
-    done: 100,
-  }[agent.status];
+  return { idle: 0, planning: 18, working: 54, reviewing: 78, revision: 66, blocked: 42, done: 100 }[
+    agent.status
+  ];
 }
 
 function formatDuration(seconds = 0) {
@@ -336,9 +354,9 @@ function formatClock(date: Date) {
 }
 
 function formatMoment(value?: string) {
-  if (!value) return "время не указано";
+  if (!value) return "не указано";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "время не указано";
+  if (Number.isNaN(date.getTime())) return "не указано";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "short",
@@ -347,24 +365,22 @@ function formatMoment(value?: string) {
   }).format(date);
 }
 
-function buildAssignments(
-  state: BureauState,
-  orchestrator?: Agent,
-): RoutedAssignment[] {
+function buildAssignments(state: BureauState, orchestrator?: Agent): RoutedAssignment[] {
   const explicit = [...(state.assignments ?? [])].sort((left, right) =>
     right.updatedAt.localeCompare(left.updatedAt),
   );
   const explicitRecipients = new Set(explicit.map((item) => item.toAgentId));
-
   const inferred = state.agents
     .filter(
       (agent) =>
         agent.id !== orchestrator?.id &&
+        agent.presence !== "standby" &&
+        agent.status !== "idle" &&
         Boolean(agent.task) &&
         !explicitRecipients.has(agent.id),
     )
     .map<RoutedAssignment>((agent) => ({
-      id: `legacy:${agent.taskId ?? agent.id}`,
+      id: `inferred:${agent.taskId ?? agent.id}`,
       taskId: agent.taskId,
       fromAgentId: orchestrator?.id,
       toAgentId: agent.id,
@@ -375,22 +391,12 @@ function buildAssignments(
       updatedAt: agent.updatedAt ?? state.updatedAt,
       inferred: true,
     }));
-
   return [...explicit, ...inferred];
 }
 
 function arrangeStage(agents: Agent[]) {
-  const orchestrator = agents.find(
-    (agent) => roleKey(agent.role) === "orchestrator",
-  );
-  const candidates = agents
-    .filter((agent) => agent.id !== orchestrator?.id)
-    .sort((left, right) => {
-      const leftActive = ACTIVE_STATUSES.has(left.status) ? 0 : 1;
-      const rightActive = ACTIVE_STATUSES.has(right.status) ? 0 : 1;
-      return leftActive - rightActive || left.id.localeCompare(right.id);
-    });
-
+  const orchestrator = agents.find((agent) => roleKey(agent.role) === "orchestrator");
+  const candidates = agents.filter((agent) => agent.id !== orchestrator?.id);
   const occupants: Partial<Record<WorkerSlot, Agent>> = {};
   const remaining = [...candidates];
 
@@ -398,11 +404,9 @@ function arrangeStage(agents: Agent[]) {
     const index = remaining.findIndex((agent) => preferredSlot(agent) === slot);
     if (index >= 0) occupants[slot] = remaining.splice(index, 1)[0];
   }
-
   for (const slot of WORKER_SLOTS) {
     if (!occupants[slot] && remaining.length) occupants[slot] = remaining.shift();
   }
-
   return { orchestrator, occupants, overflow: remaining };
 }
 
@@ -432,26 +436,24 @@ function AgentHotspot({
   return (
     <button
       type="button"
-      className={`agent-hotspot hotspot-${slot} status-${agent.status}${
+      className={`agent-hotspot hotspot-${slot} status-${agent.status} presence-${agent.presence ?? "demo"}${
         selected ? " is-selected" : ""
       }`}
       style={style}
       onClick={onSelect}
       aria-pressed={selected}
-      aria-label={`${agent.name}, ${meta.label}. ${
-        assignment?.title ?? agent.task ?? "Без задачи"
-      }. Открыть назначение`}
-      title={`${coordinates.label}: ${agent.name}`}
+      aria-label={`${agent.name}, ${meta.label}. ${assignment?.title ?? agent.task ?? "Без задачи"}`}
+      title={`${coordinates.label}: открыть карточку ${agent.name}`}
     >
-      <span className="hotspot-focus" aria-hidden="true" />
+      <span className="hotspot-aura" aria-hidden="true" />
       <span className="agent-label">
         <i aria-hidden="true" />
         <span>
           <strong>{agent.name}</strong>
           <small>
             {slot === "orchestrator"
-              ? "раздаёт задачи ↓"
-              : `${assignment?.taskId ?? "без ID"} · ${meta.short}`}
+              ? agent.presence === "standby" ? "уровень 01 · standby" : "уровень 01 · раздаёт ↓"
+              : `уровень 02 · ${assignment?.taskId ?? meta.short}`}
           </small>
         </span>
       </span>
@@ -463,38 +465,42 @@ function AssignmentInspector({
   agent,
   assignment,
   source,
+  onClose,
+  dialogRef,
 }: {
-  agent?: Agent;
+  agent: Agent;
   assignment?: RoutedAssignment;
   source?: Agent;
+  onClose: () => void;
+  dialogRef: RefObject<HTMLElement | null>;
 }) {
-  if (!agent) {
-    return (
-      <aside className="inspector empty-inspector">
-        <span className="inspector-kicker">НАЗНАЧЕНИЕ</span>
-        <div className="empty-glyph" aria-hidden="true">↘</div>
-        <h2>Выбери маршрут</h2>
-        <p>Нажми на агента или пакет задачи в офисе.</p>
-      </aside>
-    );
-  }
-
   const isOrchestrator = roleKey(agent.role) === "orchestrator";
   const progress = progressFor(agent);
   const style = { "--role-accent": roleColor(agent.role) } as CSSProperties;
   const assignmentLabel = assignment
     ? ASSIGNMENT_META[assignment.status]
-    : STATUS_META[agent.status].label;
+    : agent.presence === "standby"
+      ? "Standby"
+      : STATUS_META[agent.status].label;
 
   return (
-    <aside className="inspector" style={style} aria-live="polite">
+    <aside
+      ref={dialogRef}
+      className="inspector"
+      style={style}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inspector-title"
+      tabIndex={-1}
+    >
+      <button type="button" className="inspector-close" onClick={onClose} aria-label="Закрыть карточку">
+        ×
+      </button>
       <div className="inspector-topline">
         <span className="inspector-kicker">
           {isOrchestrator ? "ЦЕНТР УПРАВЛЕНИЯ" : "НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА"}
         </span>
-        <span className={`status-pill status-pill-${agent.status}`}>
-          <i />{assignmentLabel}
-        </span>
+        <span className={`status-pill status-pill-${agent.status}`}><i />{assignmentLabel}</span>
       </div>
 
       <div className="route-title">
@@ -505,88 +511,59 @@ function AssignmentInspector({
 
       <div className="identity-line">
         <div className="identity-beacon" aria-hidden="true"><i /></div>
-        <div>
-          <h2>{agent.name}</h2>
-          <p>{roleLabel(agent.role)}</p>
-        </div>
+        <div><h2 id="inspector-title">{agent.name}</h2><p>{roleLabel(agent.role)}</p></div>
       </div>
 
-      {agent.stale && (
-        <div className="stale-warning">
-          Сигнал давно не обновлялся. Статус может быть устаревшим.
-        </div>
-      )}
+      {agent.stale && <div className="stale-warning">Сигнал давно не обновлялся.</div>}
 
       <section className="task-card">
         <div className="task-card-heading">
           <span>{isOrchestrator ? "ТЕКУЩАЯ ЦЕЛЬ" : "ПЕРЕДАННАЯ ЗАДАЧА"}</span>
-          <code>{assignment?.taskId ?? agent.taskId ?? "NO-ID"}</code>
+          <code>{assignment?.taskId ?? agent.taskId ?? "STANDBY"}</code>
         </div>
         <h3>{assignment?.title ?? agent.task ?? "Ожидает назначения"}</h3>
-        <p>
-          {assignment?.summary ??
-            agent.summary ??
-            "Агент пока не оставил безопасное краткое резюме."}
-        </p>
+        <p>{assignment?.summary ?? agent.summary ?? "Безопасное резюме пока не поступило."}</p>
       </section>
 
-      {!isOrchestrator && assignment?.inferred && (
-        <p className="inference-note">
-          Связь восстановлена по текущей задаче агента: старое событие не содержало
-          отдельной записи назначения.
-        </p>
+      {assignment?.inferred && (
+        <p className="inference-note">Маршрут восстановлен по текущей задаче агента.</p>
       )}
 
       <section className="progress-block">
-        <div>
-          <span>Фаза: {agent.phase?.replace(/^tool:/, "") || STATUS_META[agent.status].short}</span>
-          <strong>{progress}%</strong>
-        </div>
-        <div className="progress-track" aria-label={`Прогресс ${progress}%`}>
-          <i style={{ width: `${progress}%` }} />
-        </div>
+        <div><span>Фаза: {agent.phase?.replace(/^tool:/, "") || STATUS_META[agent.status].short}</span><strong>{progress}%</strong></div>
+        <div className="progress-track" aria-label={`Прогресс ${progress}%`}><i style={{ width: `${progress}%` }} /></div>
       </section>
 
       <dl className="detail-grid">
         <div><dt>Модель</dt><dd>{agent.model || "не указана"}</dd></div>
         <div><dt>Reasoning</dt><dd>{agent.effort || "по умолчанию"}</dd></div>
         <div><dt>В работе</dt><dd>{formatDuration(agent.elapsedSeconds)}</dd></div>
-        <div>
-          <dt>Передано</dt>
-          <dd>{formatMoment(assignment?.assignedAt ?? agent.startedAt)}</dd>
-        </div>
+        <div><dt>Передано</dt><dd>{formatMoment(assignment?.assignedAt ?? agent.startedAt)}</dd></div>
       </dl>
 
       {agent.review && (
         <section className="review-card">
           <div><span>ВЕРИФИКАЦИЯ</span><b>{agent.review.status || "в процессе"}</b></div>
           <p>{agent.review.verdict || "Результат ещё проверяется."}</p>
-          <small>
-            Проверяющий: {agent.review.reviewer || "не назначен"} · попытка {agent.review.attempts ?? 1}
-          </small>
+          <small>Проверяющий: {agent.review.reviewer || "не назначен"} · попытка {agent.review.attempts ?? 1}</small>
         </section>
       )}
 
-      <div className="privacy-note">
-        <i aria-hidden="true">◆</i>
-        <p>Только безопасное резюме. Промпты, файлы и внутренние рассуждения не передаются.</p>
-      </div>
+      <div className="privacy-note"><i aria-hidden="true">◆</i><p>Только безопасное резюме: без промптов, файлов и внутренних рассуждений.</p></div>
     </aside>
   );
 }
 
 export default function Home() {
   const [liveState, setLiveState] = useState<BureauState | null>(null);
-  const [connection, setConnection] = useState<"connecting" | "live" | "offline">(
-    "connecting",
-  );
+  const [connection, setConnection] = useState<"connecting" | "live" | "offline">("connecting");
   const [viewMode, setViewMode] = useState<"live" | "demo">("live");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [clock, setClock] = useState<Date | null>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-
     const sync = async () => {
       try {
         const response = await fetch(COLLECTOR_URL, {
@@ -604,7 +581,6 @@ export default function Home() {
         if (!cancelled) setConnection("offline");
       }
     };
-
     void sync();
     const poller = window.setInterval(sync, 2_500);
     return () => {
@@ -623,303 +599,213 @@ export default function Home() {
   }, []);
 
   const hasLiveAgents = Boolean(liveState?.agents.length);
+  const mergedLiveState = useMemo(
+    () => (liveState ? mergeLiveWithRoster(liveState) : null),
+    [liveState],
+  );
   const usingDemo = viewMode === "demo" || !hasLiveAgents;
-  const state = usingDemo ? DEMO_STATE : (liveState as BureauState);
-
-  const stage = useMemo(() => arrangeStage(state.agents), [state.agents]);
+  const state = usingDemo ? DEMO_STATE : (mergedLiveState as BureauState);
+  const agents = useMemo(
+    () => state.agents.map((agent) => ({ ...agent, presence: agent.presence ?? "demo" })),
+    [state.agents],
+  );
+  const stage = useMemo(() => arrangeStage(agents), [agents]);
   const assignments = useMemo(
-    () => buildAssignments(state, stage.orchestrator),
-    [stage.orchestrator, state],
+    () => buildAssignments({ ...state, agents }, stage.orchestrator),
+    [agents, stage.orchestrator, state],
   );
   const latestAssignmentByAgent = useMemo(() => {
     const result = new Map<string, RoutedAssignment>();
     for (const assignment of assignments) {
-      if (!result.has(assignment.toAgentId)) {
-        result.set(assignment.toAgentId, assignment);
-      }
+      if (!result.has(assignment.toAgentId)) result.set(assignment.toAgentId, assignment);
     }
     return result;
   }, [assignments]);
 
-  const firstAssignedAgent = assignments
-    .map((assignment) => state.agents.find((agent) => agent.id === assignment.toAgentId))
-    .find(Boolean);
-  const fallbackAgent = firstAssignedAgent ?? stage.orchestrator ?? state.agents[0];
-  const selectedAgent =
-    state.agents.find((agent) => agent.id === selectedId) ?? fallbackAgent;
-  const effectiveSelectedId = selectedAgent?.id ?? "";
+  const selectedAgent = agents.find((agent) => agent.id === selectedId);
   const selectedAssignment = selectedAgent
     ? latestAssignmentByAgent.get(selectedAgent.id)
     : undefined;
   const assignmentSource = selectedAssignment?.fromAgentId
-    ? state.agents.find((agent) => agent.id === selectedAssignment.fromAgentId)
+    ? agents.find((agent) => agent.id === selectedAssignment.fromAgentId)
     : stage.orchestrator;
+  const liveCount = agents.filter((agent) => agent.presence === "live").length;
+  const standbyCount = agents.filter((agent) => agent.presence === "standby").length;
+  const activeCount = agents.filter((agent) => ACTIVE_STATUSES.has(agent.status)).length;
 
-  const activeCount = state.agents.filter((agent) =>
-    ACTIVE_STATUSES.has(agent.status),
-  ).length;
-  const reviewingCount = state.agents.filter(
-    (agent) => agent.status === "reviewing",
-  ).length;
-  const doneCount = state.agents.filter((agent) => agent.status === "done").length;
+  useEffect(() => {
+    if (!selectedId) return;
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const dialog = inspectorRef.current;
+    dialog?.focus();
+
+    const handleDialogKeys = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSelectedId(null);
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleDialogKeys);
+    return () => {
+      document.removeEventListener("keydown", handleDialogKeys);
+      previousFocus?.focus();
+    };
+  }, [selectedId]);
 
   const toggleMode = () => {
     if (!hasLiveAgents) return;
+    setSelectedId(null);
     setViewMode((mode) => (mode === "live" ? "demo" : "live"));
   };
 
   return (
     <main className="bureau-shell">
       <div className="page-noise" aria-hidden="true" />
+      <h1 className="visually-hidden">Агентское бюро — ЖИВОЙ ОФИС</h1>
+      <p className="visually-hidden">МАРШРУТЫ ЗАДАЧ · НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА · ПУЛ АГЕНТОВ</p>
 
-      <header className="topbar">
-        <div className="brand-lockup">
-          <span className="brand-sigil" aria-hidden="true">⌬</span>
-          <div>
-            <span>AGENT BUREAU / LOCAL OBSERVER</span>
-            <h1>Агентское бюро</h1>
-          </div>
-        </div>
+      <section className="scene-scroll" aria-label="Живой офис Агентского бюро">
+        <figure className="office-stage">
+          {/* The office is a deliberately pixel-perfect static scene; bypassing
+              image optimization also keeps the local vinext observer self-contained. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="office-art"
+            src="/og.png"
+            alt="Пиксельный офис: оркестратор руководит исследователем, разработчиком, верификатором и креативной командой"
+            width={1672}
+            height={941}
+          />
+          <div className="stage-vignette" aria-hidden="true" />
 
-        <div className="topbar-stats" aria-label="Статистика офиса">
-          <div><strong>{activeCount}</strong><span>в работе</span></div>
-          <div><strong>{reviewingCount}</strong><span>на ревью</span></div>
-          <div><strong>{doneCount}</strong><span>готово</span></div>
-        </div>
+          <svg className="hierarchy-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path className="route-path route-research" d="M 53 42 V 47 H 73" />
+            <path className="route-path route-code" d="M 53 49 V 57 H 30 V 65" />
+            <path className="route-path route-review" d="M 53 49 V 65" />
+            <path className="route-path route-creative" d="M 53 49 V 57 H 81 V 65" />
+          </svg>
 
-        <div className="connection-panel">
-          <button
-            type="button"
-            className="mode-switch"
-            onClick={toggleMode}
-            disabled={!hasLiveAgents}
-            title={
-              hasLiveAgents
-                ? "Переключить живые и демонстрационные данные"
-                : "Живые события пока не поступали"
-            }
-          >
-            <i className={`connection-dot ${connection}`} />
-            <span>
-              <b>{usingDemo ? "Демо-смена" : "В эфире"}</b>
-              <small>
-                {usingDemo ? "встроенный demo snapshot" : "collector подключён"}
-              </small>
-            </span>
-          </button>
-          <time dateTime={clock?.toISOString()}>{clock ? formatClock(clock) : "--:--:--"}</time>
-        </div>
-      </header>
+          {stage.orchestrator && (
+            <AgentHotspot
+              agent={stage.orchestrator}
+              slot="orchestrator"
+              selected={selectedId === stage.orchestrator.id}
+              onSelect={() => setSelectedId(stage.orchestrator?.id ?? null)}
+            />
+          )}
 
-      <section className="project-strip">
-        <div><span>ПРОЕКТ</span><strong>{state.project}</strong></div>
-        <p>
-          {usingDemo
-            ? "Учебная смена показывает передачу задач и роли агентов."
-            : `Живой снимок · ${state.agents.length} агентов · ${assignments.length} назначений`}
-        </p>
-        <span className="privacy-chip">
-          <i /> {usingDemo ? "public demo" : "local live"}
-        </span>
+          {WORKER_SLOTS.map((slot) => {
+            const agent = stage.occupants[slot];
+            if (!agent) return null;
+            return (
+              <AgentHotspot
+                key={agent.id}
+                agent={agent}
+                slot={slot}
+                assignment={latestAssignmentByAgent.get(agent.id)}
+                selected={selectedId === agent.id}
+                onSelect={() => setSelectedId(agent.id)}
+              />
+            );
+          })}
+
+          {WORKER_SLOTS.map((slot) => {
+            const agent = stage.occupants[slot];
+            const assignment = agent ? latestAssignmentByAgent.get(agent.id) : undefined;
+            if (!agent || !assignment) return null;
+            return (
+              <button
+                key={`task-packet-${assignment.id}`}
+                type="button"
+                className={`task-packet packet-${slot}${selectedId === agent.id ? " is-selected" : ""}`}
+                onClick={() => setSelectedId(agent.id)}
+                aria-label={`Открыть задачу ${assignment.title}, переданную агенту ${agent.name}`}
+                title={`${assignment.taskId ?? "TASK"}: ${assignment.title}`}
+              >
+                <i aria-hidden="true">◆</i><span>{assignment.taskId ?? "TASK"}</span>
+              </button>
+            );
+          })}
+        </figure>
       </section>
 
-      <div className="dashboard-grid">
-        <section className="office-frame" aria-labelledby="office-title">
-          <div className="scene-header">
-            <div>
-              <span className="floor-light" />
-              <div><b id="office-title">ЖИВОЙ ОФИС</b><small>оркестратор → исполнители</small></div>
-            </div>
-            <p><i aria-hidden="true">↘</i> Нажми на агента или пакет задачи</p>
-          </div>
+      <header className="observer-hud">
+        <div className="hud-brand"><span>OBSERVER</span><b>v0.3</b></div>
+        <button
+          type="button"
+          className="mode-switch"
+          onClick={toggleMode}
+          disabled={!hasLiveAgents}
+          title={hasLiveAgents ? "Переключить live и demo" : "Collector недоступен — показан demo-режим"}
+        >
+          <i className={`connection-dot ${connection}`} />
+          <span><b>{usingDemo ? "DEMO" : "LIVE"}</b><small>{usingDemo ? `${agents.length} агентов` : `${liveCount} live · ${standbyCount} standby`}</small></span>
+        </button>
+        <div className="hud-project"><small>ПРОЕКТ</small><strong>{state.project}</strong></div>
+        <div className="hud-stat"><strong>{activeCount}</strong><small>активны</small></div>
+        <time dateTime={clock?.toISOString()}>{clock ? formatClock(clock) : "--:--:--"}</time>
+      </header>
 
-          <div className="scene-scroll" tabIndex={0} aria-label="Прокручиваемая карта офиса">
-            <figure className="office-stage" aria-label="Иерархия назначений">
-              <Image
-                className="office-art"
-                src="/og.png"
-                alt=""
-                aria-hidden="true"
-                width={1672}
-                height={941}
-                priority
-              />
-              <div className="stage-shade" aria-hidden="true" />
+      <div className="scene-hint" aria-hidden="true"><span>↘</span> нажми на агента или пакет</div>
 
-              {stage.orchestrator ? (
-                <AgentHotspot
-                  agent={stage.orchestrator}
-                  slot="orchestrator"
-                  selected={effectiveSelectedId === stage.orchestrator.id}
-                  onSelect={() => setSelectedId(stage.orchestrator?.id ?? null)}
-                />
-              ) : (
-                <div className="missing-source" role="status">
-                  <strong>Внешняя очередь</strong>
-                  <small>оркестратор не передал live-событие</small>
-                </div>
-              )}
-
-              <div
-                className={`hierarchy-network${stage.orchestrator ? " has-source" : ""}`}
-                aria-hidden="true"
-              >
-                <span className="route-line hierarchy-stem" />
-                <span className="route-line hierarchy-bus" />
-                {WORKER_SLOTS.filter((slot) => slot !== "research").map((slot) => {
-                  const agent = stage.occupants[slot];
-                  const assignment = agent
-                    ? latestAssignmentByAgent.get(agent.id)
-                    : undefined;
-                  return (
-                    <span
-                      key={slot}
-                      className={`route-line lower-branch branch-${slot}${
-                        assignment ? " is-active" : ""
-                      }`}
-                    >
-                      {assignment && ACTIVE_STATUSES.has(agent?.status ?? "idle") && (
-                        <i className="flight-pixel" />
-                      )}
-                    </span>
-                  );
-                })}
-                <span
-                  className={`route-line research-link${
-                    stage.occupants.research &&
-                    latestAssignmentByAgent.has(stage.occupants.research.id)
-                      ? " is-active"
-                      : ""
-                  }`}
-                >
-                  {stage.occupants.research &&
-                    latestAssignmentByAgent.has(stage.occupants.research.id) &&
-                    ACTIVE_STATUSES.has(stage.occupants.research.status) && (
-                      <i className="flight-pixel" />
-                    )}
-                </span>
-              </div>
-
-              {WORKER_SLOTS.map((slot) => {
-                const agent = stage.occupants[slot];
-                if (!agent) return null;
-                const assignment = latestAssignmentByAgent.get(agent.id);
-                return (
-                  <AgentHotspot
-                    key={agent.id}
-                    agent={agent}
-                    slot={slot}
-                    assignment={assignment}
-                    selected={effectiveSelectedId === agent.id}
-                    onSelect={() => setSelectedId(agent.id)}
-                  />
-                );
-              })}
-
-              {WORKER_SLOTS.map((slot) => {
-                const agent = stage.occupants[slot];
-                if (!agent) return null;
-                const assignment = latestAssignmentByAgent.get(agent.id);
-                if (!assignment) return null;
-                return (
-                  <button
-                    key={`packet-${assignment.id}`}
-                    type="button"
-                    className={`task-packet packet-${slot}${
-                      effectiveSelectedId === agent.id ? " is-selected" : ""
-                    }`}
-                    onClick={() => setSelectedId(agent.id)}
-                    aria-label={`Открыть задачу ${assignment.title}, переданную агенту ${agent.name}`}
-                    title={assignment.title}
-                  >
-                    <i aria-hidden="true">◆</i>
-                    <span>{assignment.taskId ?? "TASK"}</span>
-                  </button>
-                );
-              })}
-
-              {stage.overflow.length > 0 && (
-                <button
-                  type="button"
-                  className="overflow-chip"
-                  onClick={() => setSelectedId(stage.overflow[0]?.id ?? null)}
-                >
-                  +{stage.overflow.length} в пуле
-                </button>
-              )}
-            </figure>
-          </div>
-
-          <div className="route-ledger" aria-label="Маршруты задач">
-            <div className="route-ledger-title">
-              <span>МАРШРУТЫ ЗАДАЧ</span>
-              <small>{assignments.length || "нет"} в текущем снимке</small>
-            </div>
-            <div className="route-ledger-list">
-              {assignments.length ? (
-                assignments.map((assignment) => {
-                  const recipient = state.agents.find(
-                    (agent) => agent.id === assignment.toAgentId,
-                  );
-                  const source = assignment.fromAgentId
-                    ? state.agents.find((agent) => agent.id === assignment.fromAgentId)
-                    : stage.orchestrator;
-                  return (
-                    <button
-                      type="button"
-                      key={assignment.id}
-                      className={effectiveSelectedId === recipient?.id ? "active" : ""}
-                      onClick={() => recipient && setSelectedId(recipient.id)}
-                      disabled={!recipient}
-                    >
-                      <span><b>{source?.name ?? "Внешняя очередь"}</b><i>→</i><b>{recipient?.name ?? assignment.toAgentId}</b></span>
-                      <small>{assignment.taskId ?? "NO-ID"} · {assignment.title}</small>
-                    </button>
-                  );
-                })
-              ) : (
-                <p>Назначения ещё не поступили.</p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <AssignmentInspector
-          agent={selectedAgent}
-          assignment={selectedAssignment}
-          source={assignmentSource}
-        />
-      </div>
-
-      <section className="activity-deck" aria-label="Пул агентов">
-        <div className="activity-heading">
-          <span aria-hidden="true">›_</span>
-          <div><b>ПУЛ АГЕНТОВ</b><small>все специалисты, включая резерв</small></div>
-        </div>
-        <div className="activity-list">
-          {state.agents.map((agent) => {
+      <nav className="crew-dock" aria-label="Пул агентов">
+        <span className="dock-title"><i>›_</i><b>КОМАНДА</b></span>
+        <div className="dock-agents">
+          {agents.map((agent) => {
             const assignment = latestAssignmentByAgent.get(agent.id);
             return (
               <button
                 type="button"
                 key={agent.id}
-                className={effectiveSelectedId === agent.id ? "active" : ""}
+                className={`${selectedId === agent.id ? "active " : ""}presence-${agent.presence}`}
                 onClick={() => setSelectedId(agent.id)}
+                title={assignment?.title ?? agent.task ?? "Без задачи"}
               >
-                <i style={{ background: roleColor(agent.role) }} />
-                <span><strong>{agent.name}</strong><small>{assignment?.title ?? agent.task ?? "Без задачи"}</small></span>
-                <em className={`mini-status mini-${agent.status}`}>{STATUS_META[agent.status].short}</em>
+                <i className={`crew-signal status-${agent.status}`} style={{ "--role-accent": roleColor(agent.role) } as CSSProperties} />
+                <span><strong>{agent.name}</strong><small>{agent.presence === "standby" ? "standby" : STATUS_META[agent.status].short}</small></span>
               </button>
             );
           })}
         </div>
-      </section>
+      </nav>
 
-      <footer className="bureau-footer">
-        <span>OBSERVER v0.2</span>
-        <p>Интерфейс наблюдает за локальными событиями и не управляет агентами.</p>
-        <span>{usingDemo ? "DEMO FEED" : "127.0.0.1:7331"}</span>
-      </footer>
+      {selectedAgent && (
+        <>
+          <button type="button" className="drawer-scrim" onClick={() => setSelectedId(null)} aria-label="Закрыть карточку" />
+          <AssignmentInspector
+            agent={selectedAgent}
+            assignment={selectedAssignment}
+            source={assignmentSource}
+            onClose={() => setSelectedId(null)}
+            dialogRef={inspectorRef}
+          />
+        </>
+      )}
     </main>
   );
 }
