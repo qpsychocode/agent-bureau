@@ -11,7 +11,7 @@
 - Web UI: `http://localhost:3000`
 - Local collector: `http://127.0.0.1:7331`
 - Public source: `https://github.com/qpsychocode/agent-bureau`
-- Public web: Vercel demo, production URL фиксируется после первого deployment
+- Public web: `https://agent-bureau.vercel.app` (Vercel demo)
 - Совместный запуск: `start-office.command` или `npm run office`
 - Каноническая сцена: точный `public/og.png` (`1672 × 941`)
 - Интерактивность сцены: DOM/CSS overlay с hotspot агентов, визуальной иерархией,

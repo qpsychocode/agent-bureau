@@ -2,6 +2,8 @@
 
 ![Agent Bureau pixel office](public/og.png)
 
+[Открыть публичную demo-смену](https://agent-bureau.vercel.app)
+
 Read-only визуализация работы оркестратора и пула специализированных агентов.
 Интерфейс показывает
 роли, задачи, состояние, модель, reasoning effort, длительность и результат
