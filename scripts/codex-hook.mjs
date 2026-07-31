@@ -71,25 +71,25 @@ function toBureauEvent(payload) {
       return {
         ...base,
         type: "run.started",
-        summary: "Сессия бюро запущена",
+        summary: "Bureau session started",
       };
     case "subagentstart":
       return {
         ...base,
         type: "agent.spawned",
-        summary: `Агент роли ${role} начал работу`,
+        summary: `${role} agent started working`,
       };
     case "subagentstop":
       return {
         ...base,
         type: "agent.done",
-        summary: `Агент роли ${role} завершил работу`,
+        summary: `${role} agent finished working`,
       };
     case "userpromptsubmit":
       return {
         ...base,
         type: "task.started",
-        summary: "Оркестратор разбирает новую задачу",
+        summary: "The orchestrator is reviewing a new task",
       };
     case "pretooluse":
       return {
@@ -97,8 +97,8 @@ function toBureauEvent(payload) {
         type: "tool.started",
         phase: toolName ? `tool:${toolName}` : "tool",
         summary: toolName
-          ? `Использует инструмент ${toolName}`
-          : "Использует инструмент",
+          ? `Using tool ${toolName}`
+          : "Using a tool",
       };
     case "posttooluse":
       return {
@@ -106,8 +106,8 @@ function toBureauEvent(payload) {
         type: "tool.finished",
         phase: toolName ? `tool:${toolName}` : "tool",
         summary: toolName
-          ? `Завершил работу с инструментом ${toolName}`
-          : "Завершил работу с инструментом",
+          ? `Finished using tool ${toolName}`
+          : "Finished using a tool",
       };
     case "posttoolusefailure":
       return {
@@ -115,34 +115,34 @@ function toBureauEvent(payload) {
         type: "tool.finished",
         phase: toolName ? `tool:${toolName}` : "tool",
         summary: toolName
-          ? `Инструмент ${toolName} завершился с ошибкой`
-          : "Инструмент завершился с ошибкой",
+          ? `Tool ${toolName} failed`
+          : "Tool failed",
       };
     case "permissionrequest":
       return {
         ...base,
         type: "agent.blocked",
-        summary: "Ожидает разрешения пользователя",
+        summary: "Waiting for user approval",
       };
     case "taskcompleted":
       return {
         ...base,
         type: "task.completed",
-        summary: "Задача завершена",
+        summary: "Task completed",
       };
     case "stop":
       return {
         ...base,
         type: agentId === "orchestrator" ? "task.completed" : "agent.done",
         summary: agentId === "orchestrator"
-          ? "Рабочий цикл оркестратора завершён"
-          : "Агент завершил работу",
+          ? "The orchestrator finished its work cycle"
+          : "Agent finished working",
       };
     case "sessionend":
       return {
         ...base,
         type: "run.finished",
-        summary: "Сессия бюро завершена",
+        summary: "Bureau session ended",
       };
     case "notification":
       return {

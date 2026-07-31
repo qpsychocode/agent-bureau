@@ -31,25 +31,28 @@ test("server-renders the Agent Bureau office", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Агентское бюро — живой офис<\/title>/i);
-  assert.match(html, /Агентское бюро/);
-  assert.match(html, /ЖИВОЙ ОФИС/);
-  assert.match(html, /МАРШРУТЫ ЗАДАЧ/);
-  assert.match(html, /НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА/);
-  assert.match(html, /ПУЛ АГЕНТОВ/);
-  assert.match(html, /Добавить агента/);
+  assert.match(html, /<html lang="en"/i);
+  assert.match(html, /<title>Agent Bureau — Live Office<\/title>/i);
+  assert.match(html, /Agent Bureau/);
+  assert.match(html, /LIVE OFFICE/);
+  assert.match(html, /TASK ROUTES/);
+  assert.match(html, /ORCHESTRATOR ASSIGNMENTS/);
+  assert.match(html, /AGENT ROSTER/);
+  assert.match(html, /Add agent/);
+  assert.match(html, />TEAM</);
   for (const agent of [
-    "Оркестратор",
-    "Кодер",
-    "Дизайнер",
-    "Ресерчер",
-    "Верификатор",
-    "Копирайтер",
-    "Маркетолог",
-    "Иллюстратор",
+    "Orchestrator",
+    "Developer",
+    "Designer",
+    "Researcher",
+    "Verifier",
+    "Copywriter",
+    "Marketer",
+    "Illustrator",
   ]) {
     assert.match(html, new RegExp(agent));
   }
+  assert.doesNotMatch(html, /[А-Яа-яЁё]/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -77,9 +80,28 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(page, /OFFICE_TEMPLATES/);
   assert.match(page, /RUNTIME_PROVIDERS/);
   assert.match(page, /OpenAI-compatible|runtimeProvidersRaw/);
-  assert.match(page, /Имя env-переменной/);
+  assert.match(page, /Environment variable/);
   assert.match(page, /function AgentBuilder/);
-  assert.match(page, /Prompt хранится только в localStorage/);
+  assert.match(page, /prompt stays in this browser/);
+  assert.match(page, /teamOpen|team-popover|aria-expanded/);
+  assert.match(page, /gaze-up-layer|GAZE_LAYOUTS/);
+  for (const [sprite, dimensions] of Object.entries({
+    orchestrator: [261, 303],
+    researcher: [239, 306],
+    reviewer: [249, 312],
+    coder: [297, 316],
+    designer: [249, 334],
+    copywriter: [239, 319],
+    marketing: [229, 315],
+    image: [246, 321],
+  })) {
+    assert.match(
+      page,
+      new RegExp(`${sprite}: \\{ width: ${dimensions[0]}, height: ${dimensions[1]}, eyes:`),
+    );
+  }
+  assert.match(page, /viewBox=\{`0 0 \$\{gaze\.width\} \$\{gaze\.height\}`\}/);
+  assert.doesNotMatch(page, /OBSERVER|v0\.5|observer-hud|crew-dock|hotspot-aura|sprite-beacon/);
   const customAdapter = page.match(/function customDefinitionToAgent[\s\S]*?\n}\n\nfunction mergeLiveWithRoster/)?.[0] ?? "";
   assert.ok(customAdapter);
   assert.doesNotMatch(customAdapter, /definition\.systemPrompt/);
@@ -87,8 +109,13 @@ test("removes starter-only preview code and metadata", async () => {
   assert.doesNotMatch(page, /PixelAgent|robot-head|OfficeRoom/);
   assert.match(css, /@keyframes agent-working/);
   assert.match(css, /@keyframes agent-arrive/);
+  assert.match(css, /@keyframes team-popover-enter/);
+  assert.match(css, /\.gaze-up-layer/);
+  assert.doesNotMatch(css, /\.observer-hud|\.crew-dock|\.hotspot-aura|\.sprite-beacon/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.match(layout, /Агентское бюро — живой офис/);
+  assert.match(layout, /Agent Bureau — Live Office/);
+  assert.match(layout, /lang="en"/);
+  assert.doesNotMatch(runtimeCatalog, /[А-Яа-яЁё]/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview/);

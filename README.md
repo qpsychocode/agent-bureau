@@ -1,94 +1,97 @@
-# Агентское бюро — Pixel Office
+# Agent Bureau — Pixel Office
 
 ![Agent Bureau pixel office](public/og.png)
 
-[Открыть публичную demo-смену](https://agent-bureau.vercel.app)
+[Open the public demo shift](https://agent-bureau.vercel.app)
 
-Read-only визуализация работы оркестратора и пула специализированных агентов.
-Интерфейс показывает
-роли, задачи, состояние, модель, reasoning effort, длительность и результат
-верификации, но не получает промпты, содержимое файлов, transcript или вывод
-инструментов.
+A read-only view of an orchestrator and a pool of specialized agents at work.
+The interface shows roles, tasks, status, model, reasoning effort, elapsed time,
+and verification results, but it never receives prompts, file contents,
+transcripts, or tool output.
 
-В публичной web-версии работает демонстрационная смена. Локальная версия может
-подключиться к collector и показывать живые события Codex на этом компьютере.
+The public web version runs a demo shift. The local version can connect to the
+collector and show live Codex events from this computer.
 
-## Что уже работает
+## What works today
 
-- pixel-art интерьер в стиле канонического референса и восемь отдельных
-  ролевых спрайтов, которые анимируются по live-статусу;
-- кликабельные маршруты `оркестратор → агент` и пакеты конкретных задач;
-- отдельное досье назначения: источник, получатель, task ID, статус и резюме;
-- динамический пул с оркестратором, кодером, дизайнером, исследователем,
-  копирайтером, верификатором, маркетологом и иллюстратором;
-- каждая из восьми постоянных ролей имеет собственный тематический кабинет;
-  дополнительные live-агенты остаются видимыми в цифровом аннексе и нижнем пуле,
-  а неизвестные роли получают стабильный fallback-спрайт;
-- конструктор по кнопке «Добавить агента»: восемь готовых кабинетов, восемь
-  аватаров, runtime, произвольная модель, reasoning и обязательный system prompt;
-  профиль появляется без изменения React-кода;
-- безопасный локальный collector с allowlist полей;
-- независимая проверка и максимум два раунда доработки в skill Agent Bureau;
-- Markdown-память решений, ошибок и исследовательских отчётов.
+- a pixel-art office based on the approved reference, with eight separate role
+  sprites animated from live status;
+- clickable `orchestrator → agent` routes and task packets;
+- an assignment inspector with source, recipient, task ID, status, and summary;
+- a dynamic pool with an orchestrator, developer, designer, researcher,
+  copywriter, verifier, marketer, and illustrator;
+- a dedicated themed office for each permanent role; additional live agents
+  remain available in the digital annex and Team roster, while unknown roles
+  receive a deterministic fallback sprite;
+- a compact `TEAM` popover and a separate, always-visible `ADD AGENT` action;
+- a profile builder with eight offices, eight avatars, a runtime, arbitrary model
+  and reasoning values, and a required system prompt; profiles appear without
+  changes to React code;
+- an English interface and social image, an upward-gaze hover/focus response,
+  and corrected Designer sprite transparency;
+- a safe local collector with an explicit field allowlist;
+- independent verification with no more than two revision rounds in the Agent
+  Bureau skill;
+- Markdown memory for decisions, lessons, and research reports.
 
-## Как устроено
+## Architecture
 
 ```text
-Codex hooks / внешние события
+Codex hooks / external events
               │
               ▼
-local collector :7331 ──► нормализованный snapshot
+local collector :7331 ──► normalized snapshot
                                   │
                                   ▼
                     Pixel Office :3000 / Vercel demo
 ```
 
-## Самый простой запуск на macOS
+## Fastest start on macOS
 
-Дважды нажмите `start-office.command`, затем откройте:
+Double-click `start-office.command`, then open:
 
 ```text
 http://localhost:3000
 ```
 
-Окно Terminal должно оставаться открытым. Для остановки нажмите `Control-C`.
+Keep the Terminal window open. Press `Control-C` to stop the office.
 
-Если Node.js уже установлен обычным способом:
+If Node.js is already installed normally:
 
 ```bash
 npm install
 npm run office
 ```
 
-Команда `office` одновременно запускает:
+The `office` command starts both:
 
-- интерфейс на `127.0.0.1:3000`;
-- collector событий на `127.0.0.1:7331`.
+- the interface on `127.0.0.1:3000`;
+- the event collector on `127.0.0.1:7331`.
 
-Оба адреса доступны только на этом компьютере. Публичный Vercel-сайт не получает
-доступ к локальному collector и поэтому безопасно показывает demo snapshot.
+Both addresses are available only on this computer. The public Vercel site
+cannot access the local collector, so it safely shows the demo snapshot.
 
-## Подключение живых событий Codex
+## Connecting live Codex events
 
-Проект уже содержит `.codex/config.toml` и безопасный bridge
-`scripts/codex-hook.mjs`. Для первого подключения:
+The project already includes `.codex/config.toml` and the safe
+`scripts/codex-hook.mjs` bridge. To connect it for the first time:
 
-1. Запустите Pixel Office.
-2. Откройте новую задачу Codex из этого репозитория.
-3. Откройте `/hooks` и доверьте определения проекта.
-4. Запустите субагента или инструмент — офис обновится автоматически.
+1. Start Pixel Office.
+2. Open a new Codex task from this repository.
+3. Open `/hooks` and trust the project definitions.
+4. Start a subagent or tool; the office updates automatically.
 
-Codex требует повторного доверия, если определение hook изменилось. Это штатная
-защита. Hook ничего не блокирует, не одобряет и не продолжает автоматически: он
-только отправляет сокращённое событие локальному collector. Для `Stop` и
-`SubagentStop` bridge возвращает нейтральное `{"continue":true}`.
+Codex asks for trust again when a hook definition changes. This is expected
+protection. The hook never blocks, approves, or automatically continues work; it
+only sends a reduced event to the local collector. For `Stop` and
+`SubagentStop`, the bridge returns the neutral `{"continue":true}` response.
 
-Если collector выключен, работа Codex продолжается как обычно. Интерфейс
-показывает демонстрационную смену, пока не появятся живые агенты.
+If the collector is off, Codex continues normally. The interface shows the demo
+shift until live agents appear.
 
-## События Agent Bureau
+## Agent Bureau events
 
-Внешний оркестратор может отправлять собственные статусы и явные назначения:
+An external orchestrator can send its own statuses and explicit assignments:
 
 ```bash
 curl --request POST \
@@ -99,23 +102,23 @@ curl --request POST \
     "fromAgentId": "orchestrator",
     "agentId": "coder-1",
     "taskId": "TASK-42",
-    "name": "Кодер",
+    "name": "Developer",
     "role": "coder",
-    "task": "Добавляет авторизацию",
+    "task": "Add authentication",
     "model": "luna",
     "effort": "medium",
-    "summary": "Собирает middleware и тесты"
+    "summary": "Build middleware and tests"
   }' \
   http://127.0.0.1:7331/api/events
 ```
 
-Поддерживаемые состояния:
+Supported states:
 
 ```text
 idle · planning · working · reviewing · revision · blocked · done
 ```
 
-Основные endpoints:
+Primary endpoints:
 
 ```text
 GET  /api/health
@@ -123,98 +126,99 @@ GET  /api/state
 POST /api/events
 ```
 
-Collector хранит не более 50 последних назначений и обновляет их жизненный цикл
-от `assigned` до `done`, `blocked` или `revision`.
+The collector retains at most 50 recent assignments and advances their lifecycle
+from `assigned` to `done`, `blocked`, or `revision`.
 
-Collector принимает только allowlist полей. Размер события ограничен 32 KiB;
-секреты и похожие на пути строки дополнительно редактируются.
+The collector accepts only allowlisted fields. Events are limited to 32 KiB;
+secrets and path-like strings are additionally redacted.
 
-## Локальные данные
+## Local data
 
-История хранится в игнорируемой директории `.bureau/`:
+History is stored in the ignored `.bureau/` directory:
 
 ```text
-.bureau/events.jsonl  — append-only поток событий
-.bureau/state.json    — последний снимок офиса
+.bureau/events.jsonl  — append-only event stream
+.bureau/state.json    — latest office snapshot
 ```
 
-Ничего автоматически не отправляется в облако. Облачное read-only зеркало можно
-добавить позже поверх того же формата событий.
+Nothing is sent to the cloud automatically. A cloud read-only mirror can be
+added later on top of the same event format.
 
-Профили, созданные через кнопку «Добавить агента», сохраняются отдельно в
-`localStorage` текущего браузера под ключом `agent-bureau.agent-profiles.v2`.
-Записи старого формата `agent-bureau.custom-agents.v1` автоматически переносятся
-в v2 после успешной записи. System prompt не попадает в collector, task summary
-или HTML-карточки. Удалить созданный профиль можно из его карточки.
+Profiles created through `ADD AGENT` are stored separately in the current
+browser's `localStorage` under `agent-bureau.agent-profiles.v2`. Records in the
+legacy `agent-bureau.custom-agents.v1` format migrate to v2 only after a
+successful write. The system prompt never enters the collector, task summary,
+or HTML cards. A created profile can be deleted from its inspector.
 
-## Свой runtime и своя модель
+## Bring your own runtime and model
 
-Конструктор не привязан к одному поставщику. В стартовом каталоге есть:
+The builder is not tied to one provider. Its starter catalog includes:
 
 - Codex / OpenAI;
 - Cursor;
 - Claude Code;
-- любой OpenAI-compatible endpoint — например Ollama, vLLM, OpenRouter,
-  DeepSeek, Qwen или GLM;
-- собственный CLI, SDK или локальный bridge.
+- any OpenAI-compatible endpoint, including Ollama, vLLM, OpenRouter, DeepSeek,
+  Qwen, or GLM;
+- a custom CLI, SDK, or local bridge.
 
-Model ID и reasoning — свободные безопасные строки: интерфейс не ограничивает
-пользователя устаревающим списком моделей. Для API-compatible runtime можно
-указать HTTP(S) endpoint. Вместо API-ключа профиль хранит только имя переменной
-окружения, например `OPENAI_API_KEY`; само значение секрета должен читать только
-доверенный локальный адаптер.
+Model ID and reasoning are arbitrary safe strings, so the interface is not
+limited by a stale model allowlist. An API-compatible runtime can include an
+HTTP(S) endpoint. Instead of an API key, the profile stores only an environment
+variable name such as `OPENAI_API_KEY`; only a trusted local adapter reads the
+secret value.
 
-Каталог провайдеров лежит в [`config/runtime-providers.json`](config/runtime-providers.json),
-а переносимая схема профиля — в
-[`config/agent-profile.schema.json`](config/agent-profile.schema.json). Чтобы
-добавить новый вариант в конструктор, достаточно дописать JSON-запись с `id`,
-`label`, `adapterId`, `adapterMode` и политиками полей. Команды shell в каталог не добавляются:
-исполняемый код адаптера остаётся локальным и проходит отдельную проверку.
+The provider catalog lives in
+[`config/runtime-providers.json`](config/runtime-providers.json), and the portable
+profile schema lives in
+[`config/agent-profile.schema.json`](config/agent-profile.schema.json). Add a
+builder option by adding a JSON record with `id`, `label`, `adapterId`,
+`adapterMode`, and field policies. Never put shell commands in the catalog;
+executable adapter code stays local and is reviewed separately.
 
-Важно: публичный Vercel-сайт создаёт **конфигурацию**, а не запускает процесс на
-компьютере пользователя. Реальный запуск, проверка доступности модели и отправка
-нормализованной телеметрии выполняются локальным runtime adapter. Запрошенная
-модель в профиле и фактически подтверждённая модель в live-событии намеренно
-показываются как разные сущности. Контракт расширения описан в
+Important: the public Vercel site creates a **configuration**; it does not start
+a process on the user's computer. A local runtime adapter performs the real
+start, model availability check, and normalized telemetry delivery. The model
+requested in a profile and the model confirmed by a live event are deliberately
+shown as separate facts. The extension contract is documented in
 [`docs/RUNTIME_ADAPTERS.md`](docs/RUNTIME_ADAPTERS.md).
 
-## Ограничения эксперимента
+## Experimental limitations
 
-- Hook подключён только к задачам Codex, открытым из этого репозитория.
-- Живая визуализация работает, пока запущен локальный Pixel Office.
-- Tool hooks не содержат `agent_id`, поэтому такая телеметрия относится к
-  оркестратору; точные роли и задачи субагентов берутся из `SubagentStart` и
-  `SubagentStop` или из событий самого Bureau.
-- Hosted tools и некоторые специализированные инструменты могут не создавать
-  tool-события.
+- The hook applies only to Codex tasks opened from this repository.
+- Live visualization works only while the local Pixel Office is running.
+- Tool hooks do not include `agent_id`, so their telemetry belongs to the
+  orchestrator. Exact subagent roles and tasks come from `SubagentStart`,
+  `SubagentStop`, or Bureau events.
+- Hosted tools and some specialized tools may not emit tool events.
 
-Схема Hooks основана на актуальной [официальной документации Codex](https://learn.chatgpt.com/docs/hooks.md).
+The Hooks schema follows the current
+[official Codex documentation](https://learn.chatgpt.com/docs/hooks.md).
 
-## Skill Agent Bureau
+## Agent Bureau skill
 
-Исходник переиспользуемого навыка находится в `skills/agent-bureau`. Он задаёт роли,
-формат назначения, параллельные волны, независимую верификацию, максимум два раунда
-доработки и правила проектной памяти.
+The reusable skill source lives in `skills/agent-bureau`. It defines roles,
+assignment packets, parallel waves, independent verification, a two-revision
+limit, and project-memory rules.
 
-Researcher закреплён за профилем `Cursor Grok 4.5 High Fast` и работает в Cursor
-Ask mode без изменения проекта. Локальный адаптер сначала проверяет наличие точного
-профиля, затем сверяет фактическую модель из стартового события. Тихая подмена модели
-запрещена.
+Research is assigned to the `Cursor Grok 4.5 High Fast` profile in Cursor Ask
+mode without project changes. The local adapter first checks for the exact
+profile, then compares the actual model from the start event. Silent model
+substitution is forbidden.
 
-Проверка готовности:
+Readiness check:
 
 ```bash
 ./researcher.command
 ```
 
-Запуск после установки и авторизации Cursor Agent CLI:
+Run after installing and authenticating Cursor Agent CLI:
 
 ```bash
 ./researcher.command \
   --task-id cursor-grok-profile \
-  --task "Проверь по официальным источникам актуальный профиль Grok 4.5 в Cursor"
+  --task "Verify the current Grok 4.5 profile in Cursor using official sources"
 ```
 
-Отчёт сохраняется в `docs/research/<task-id>.md` и передаётся в Pixel Office как
-артефакт на верификацию. По умолчанию действуют два раунда поиска, максимум 12
-поисковых запросов, жёсткий предел 20 tool calls и таймаут 12 минут.
+The report is saved to `docs/research/<task-id>.md` and sent to Pixel Office as
+an artifact for verification. Defaults are two search rounds, at most 12 search
+queries, a hard limit of 20 tool calls, and a 12-minute timeout.

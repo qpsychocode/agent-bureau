@@ -1,83 +1,83 @@
-# Проектная память и будущий RAG
+# Project memory and future RAG
 
-## Источник истины
+## Source of truth
 
-Markdown остаётся каноническим, читаемым человеком источником. RAG является индексом
-поверх этих файлов: он помогает найти нужные фрагменты, но не заменяет документы и не
-хранит единственную копию решения.
+Keep Markdown as the canonical, human-readable source. Treat RAG as an index over these
+files: it helps retrieve relevant passages but does not replace the documents or hold the
+only copy of a decision.
 
-Минимальная структура проекта:
+Use this minimum project structure:
 
 ```text
 docs/
-  PROJECT_CONTEXT.md   краткое актуальное состояние проекта
-  DECISIONS.md         принятые архитектурные и продуктовые решения
-  LESSONS.md           ошибки, неудачные подходы и условия повторной попытки
+  PROJECT_CONTEXT.md   concise, current project state
+  DECISIONS.md         accepted architecture and product decisions
+  LESSONS.md           failures, rejected approaches, and retry conditions
   tasks/
-    TASK-001.md        журнал значимой задачи
+    TASK-001.md        log for a meaningful task
   research/
-    TOPIC.md           доказательные исследовательские отчёты
+    TOPIC.md           evidence-based research reports
 ```
 
-Не создавать журнал для каждой мелкой команды. Фиксировать то, что поможет следующему
-агенту принять решение или не повторить ошибку.
+Do not create a log for every minor command. Record what will help the next agent make a
+decision or avoid repeating a mistake.
 
-## Что читать перед задачей
+## What to read before a task
 
-1. `PROJECT_CONTEXT.md` — всегда для значимой проектной работы.
-2. Релевантные ADR из `DECISIONS.md`.
-3. Релевантные записи `LESSONS.md` по затрагиваемой области.
-4. Только связанные task/research документы, найденные по заголовкам и metadata.
+1. Read `PROJECT_CONTEXT.md` for all meaningful project work.
+2. Read relevant ADRs from `DECISIONS.md`.
+3. Read relevant entries in `LESSONS.md` for the affected area.
+4. Read only related task/research documents found by headings and metadata.
 
-Не загружать всю историю без фильтра: это размывает актуальный контекст.
+Do not load the entire history without filtering; it dilutes current context.
 
-## Запись решения
+## Recording a decision
 
 ```markdown
-## ADR-NNN — Название
+## ADR-NNN — Title
 
-- Статус: proposed | accepted | superseded
-- Дата: YYYY-MM-DD
-- Область: <компоненты или теги>
-- Контекст: <какая проблема потребовала решения>
-- Решение: <что выбрано>
-- Почему: <краткое проверяемое обоснование>
-- Альтернативы: <что отклонено и почему>
-- Последствия: <цена и ограничения>
-- Доказательства: <тесты, метрики, ссылки>
-- Пересмотреть, когда: <сигнал устаревания>
+- Status: proposed | accepted | superseded
+- Date: YYYY-MM-DD
+- Area: <components or tags>
+- Context: <the problem that required a decision>
+- Decision: <what was selected>
+- Why: <concise, verifiable rationale>
+- Alternatives: <what was rejected and why>
+- Consequences: <costs and limitations>
+- Evidence: <tests, metrics, links>
+- Revisit when: <signal that the decision is stale>
 ```
 
-Записывать объяснимое обоснование, но не внутреннюю chain-of-thought модели.
+Record an explainable rationale, not the model's internal chain of thought.
 
-## Запись ошибки
+## Recording a failure
 
 ```markdown
-## LESSON-NNN — Короткое название
+## LESSON-NNN — Short title
 
-- Дата: YYYY-MM-DD
-- Попытка: <что сделали>
-- Наблюдение: <как проявился провал>
-- Причина: <подтверждённая причина или unknown>
-- Не повторять: <конкретный анти-паттерн>
-- Можно попробовать снова, если: <какие условия должны измениться>
-- Доказательства: <лог, тест, ссылка>
+- Date: YYYY-MM-DD
+- Attempt: <what was done>
+- Observation: <how the failure appeared>
+- Cause: <confirmed cause or unknown>
+- Do not repeat: <specific anti-pattern>
+- Retry if: <conditions that must change>
+- Evidence: <log, test, link>
 ```
 
-Это правило предотвращает ложный запрет навсегда: неудачная попытка может стать
-уместной после изменения условий.
+This rule prevents an incorrect permanent ban: a failed approach may become appropriate
+after conditions change.
 
-## Подготовка к RAG
+## Preparing for RAG
 
-Когда документов станет достаточно много:
+When the document set becomes large enough:
 
-1. Разбивать по смысловым секциям, сохраняя заголовки.
-2. Индексировать текст и metadata: `project`, `type`, `status`, `area`, `date`,
+1. Split documents into meaningful sections while preserving headings.
+2. Index text and metadata: `project`, `type`, `status`, `area`, `date`,
    `supersedes`, `tags`.
-3. Перед задачей искать сначала accepted-решения и активные lessons по области.
-4. Возвращать агенту фрагменты со ссылкой на исходный Markdown-файл.
-5. Исключать superseded-решения из ответа по умолчанию, но сохранять их для аудита.
-6. После обновления Markdown переиндексировать изменённые секции.
+3. Before a task, retrieve accepted decisions and active lessons for the area first.
+4. Return passages to the agent with a link to the source Markdown file.
+5. Exclude superseded decisions from answers by default, but preserve them for audit.
+6. Reindex changed sections after updating Markdown.
 
-Начинать с обычного полнотекстового поиска. Векторный индекс добавлять, когда ручной
-поиск перестанет надёжно находить перефразированные решения.
+Start with ordinary full-text search. Add a vector index when manual search no longer
+reliably finds paraphrased decisions.

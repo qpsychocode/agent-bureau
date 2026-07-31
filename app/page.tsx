@@ -122,12 +122,12 @@ const LEGACY_CUSTOM_AGENTS_STORAGE_KEY = "agent-bureau.custom-agents.v1";
 const ROSTER_AGENT_IDS = new Set(DEMO_STATE.agents.map((agent) => agent.id));
 const FALLBACK_RUNTIME_PROVIDER: RuntimeProviderDefinition = {
   id: "custom",
-  label: "Свой runtime",
+  label: "Custom runtime",
   badge: "CUSTOM",
   adapterId: "custom-adapter",
   adapterMode: "editable",
-  description: "Собственный CLI, SDK или локальный bridge",
-  modelPlaceholder: "Model ID твоего runtime",
+  description: "Your own CLI, SDK, or local bridge",
+  modelPlaceholder: "Model ID supported by your runtime",
   defaultReasoning: "provider-default",
   endpointMode: "optional",
   credentialEnvMode: "optional",
@@ -138,42 +138,35 @@ const RUNTIME_PROVIDERS = parsedRuntimeProviders.length
   ? parsedRuntimeProviders
   : [FALLBACK_RUNTIME_PROVIDER];
 
-const ACTIVE_STATUSES = new Set<AgentStatus>([
-  "planning",
-  "working",
-  "reviewing",
-  "revision",
-]);
-
 const STATUS_META: Record<AgentStatus, { label: string; short: string }> = {
-  idle: { label: "Свободен", short: "резерв" },
-  planning: { label: "Планирует", short: "план" },
-  working: { label: "Работает", short: "в работе" },
-  reviewing: { label: "Проверяет", short: "ревью" },
-  revision: { label: "Дорабатывает", short: "правки" },
-  blocked: { label: "Заблокирован", short: "блокер" },
-  done: { label: "Готово", short: "готово" },
+  idle: { label: "Available", short: "standby" },
+  planning: { label: "Planning", short: "planning" },
+  working: { label: "Working", short: "working" },
+  reviewing: { label: "Reviewing", short: "review" },
+  revision: { label: "Revising", short: "revision" },
+  blocked: { label: "Blocked", short: "blocked" },
+  done: { label: "Done", short: "done" },
 };
 
 const ASSIGNMENT_META: Record<AssignmentStatus, string> = {
-  assigned: "Передана",
-  working: "В работе",
-  reviewing: "На проверке",
-  revision: "На доработке",
-  blocked: "Заблокирована",
-  done: "Завершена",
+  assigned: "Assigned",
+  working: "In progress",
+  reviewing: "In review",
+  revision: "Needs revision",
+  blocked: "Blocked",
+  done: "Completed",
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  orchestrator: "Оркестратор",
-  coder: "Разработчик",
-  designer: "Дизайнер",
-  image: "Иллюстратор",
-  reviewer: "Верификатор",
-  copywriter: "Копирайтер",
-  marketing: "Маркетолог",
-  researcher: "Исследователь",
-  agent: "Специалист",
+  orchestrator: "Orchestrator",
+  coder: "Developer",
+  designer: "Designer",
+  image: "Illustrator",
+  reviewer: "Verifier",
+  copywriter: "Copywriter",
+  marketing: "Marketer",
+  researcher: "Researcher",
+  agent: "Specialist",
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -199,20 +192,35 @@ const ROLE_SPRITES: Record<string, string> = {
   image: "/agents/image.png",
 };
 
+const GAZE_LAYOUTS: Record<string, {
+  width: number;
+  height: number;
+  eyes: Array<[number, number, number, number]>;
+}> = {
+  orchestrator: { width: 261, height: 303, eyes: [[101, 83, 13, 23], [145, 83, 13, 23]] },
+  researcher: { width: 239, height: 306, eyes: [[88, 84, 14, 22], [131, 84, 14, 22]] },
+  reviewer: { width: 249, height: 312, eyes: [[98, 95, 12, 22], [137, 94, 14, 23]] },
+  coder: { width: 297, height: 316, eyes: [[94, 97, 13, 24], [136, 97, 13, 24]] },
+  designer: { width: 249, height: 334, eyes: [[114, 122, 13, 21], [150, 122, 13, 21]] },
+  copywriter: { width: 239, height: 319, eyes: [[101, 87, 13, 22], [142, 87, 13, 22]] },
+  marketing: { width: 229, height: 315, eyes: [[88, 94, 13, 22], [130, 94, 13, 22]] },
+  image: { width: 246, height: 321, eyes: [[98, 100, 12, 23], [137, 100, 13, 23]] },
+};
+
 const OFFICE_TEMPLATES: Array<{
   key: OfficeKey;
   label: string;
   description: string;
   image: string;
 }> = [
-  { key: "orchestrator", label: "Командный", description: "Стратегия и раздача задач", image: "/offices/orchestrator.webp" },
-  { key: "researcher", label: "Архив", description: "Поиск и проверка источников", image: "/offices/researcher.webp" },
-  { key: "reviewer", label: "QA-лаборатория", description: "Верификация результата", image: "/offices/reviewer.webp" },
-  { key: "coder", label: "Разработка", description: "Код, тесты и сборки", image: "/offices/coder.webp" },
-  { key: "designer", label: "Дизайн-студия", description: "Интерфейсы и система визуала", image: "/offices/designer.webp" },
-  { key: "copywriter", label: "Редакция", description: "Тексты и сценарии", image: "/offices/copywriter.webp" },
-  { key: "marketing", label: "Маркетинг", description: "Кампании и аналитика", image: "/offices/marketing.webp" },
-  { key: "image", label: "Иллюстраторская", description: "Изображения и арт", image: "/offices/image.webp" },
+  { key: "orchestrator", label: "Command Room", description: "Strategy and task dispatch", image: "/offices/orchestrator.webp" },
+  { key: "researcher", label: "Research Archive", description: "Research and source verification", image: "/offices/researcher.webp" },
+  { key: "reviewer", label: "QA Lab", description: "Independent result verification", image: "/offices/reviewer.webp" },
+  { key: "coder", label: "Development", description: "Code, tests, and builds", image: "/offices/coder.webp" },
+  { key: "designer", label: "Design Studio", description: "Interfaces and visual systems", image: "/offices/designer.webp" },
+  { key: "copywriter", label: "Editorial", description: "Copy and narratives", image: "/offices/copywriter.webp" },
+  { key: "marketing", label: "Marketing", description: "Campaigns and analytics", image: "/offices/marketing.webp" },
+  { key: "image", label: "Illustration Studio", description: "Images and artwork", image: "/offices/image.webp" },
 ];
 
 const AVATAR_OPTIONS = OFFICE_TEMPLATES.map((office) => ({
@@ -225,7 +233,7 @@ function runtimeProviderFor(providerId: string) {
   return RUNTIME_PROVIDERS.find((provider) => provider.id === providerId) ?? {
     ...FALLBACK_RUNTIME_PROVIDER,
     id: providerId,
-    label: providerId === "unconfigured" ? "Runtime не настроен" : providerId,
+    label: providerId === "unconfigured" ? "Runtime not configured" : providerId,
   };
 }
 
@@ -237,14 +245,14 @@ const STAGE_SLOTS: Record<
   StageSlot,
   { x: number; y: number; width: number; height: number; label: string }
 > = {
-  orchestrator: { x: 42, y: 6, width: 34, height: 47, label: "Командный кабинет" },
-  research: { x: 27, y: 9, width: 15, height: 44, label: "Архив исследователя" },
-  review: { x: 76, y: 9, width: 24, height: 44, label: "QA-лаборатория" },
-  code: { x: 0, y: 55, width: 20, height: 41, label: "Кабинет разработки" },
-  design: { x: 20, y: 55, width: 19, height: 41, label: "Дизайн-студия" },
-  copy: { x: 39, y: 55, width: 20, height: 41, label: "Редакция" },
-  marketing: { x: 59, y: 55, width: 21, height: 41, label: "Маркетинг-кабинет" },
-  image: { x: 80, y: 55, width: 20, height: 41, label: "Иллюстраторская" },
+  orchestrator: { x: 42, y: 6, width: 34, height: 47, label: "Command Office" },
+  research: { x: 27, y: 9, width: 15, height: 44, label: "Research Archive" },
+  review: { x: 76, y: 9, width: 24, height: 44, label: "QA Lab" },
+  code: { x: 0, y: 55, width: 20, height: 41, label: "Development Office" },
+  design: { x: 20, y: 55, width: 19, height: 41, label: "Design Studio" },
+  copy: { x: 39, y: 55, width: 20, height: 41, label: "Editorial Office" },
+  marketing: { x: 59, y: 55, width: 21, height: 41, label: "Marketing Office" },
+  image: { x: 80, y: 55, width: 20, height: 41, label: "Illustration Studio" },
 };
 
 const WORKER_SLOTS: WorkerSlot[] = [
@@ -347,7 +355,7 @@ function roleKey(role: string) {
 }
 
 function roleLabel(role: string) {
-  return ROLE_LABELS[roleKey(role)] ?? role ?? "Специалист";
+  return ROLE_LABELS[roleKey(role)] ?? role ?? "Specialist";
 }
 
 function roleColor(role: string) {
@@ -362,14 +370,18 @@ function stableHash(value: string) {
   return hash;
 }
 
-function spriteFor(agent: Agent) {
+function spriteKeyFor(agent: Agent) {
   if (agent.customAvatar && ROLE_SPRITES[agent.customAvatar]) {
-    return ROLE_SPRITES[agent.customAvatar];
+    return agent.customAvatar;
   }
   const key = roleKey(agent.role);
-  if (ROLE_SPRITES[key]) return ROLE_SPRITES[key];
+  if (ROLE_SPRITES[key]) return key;
   const fallbacks = ["coder", "designer", "copywriter", "marketing", "image"];
-  return ROLE_SPRITES[fallbacks[stableHash(`${agent.id}:${agent.role}`) % fallbacks.length]];
+  return fallbacks[stableHash(`${agent.id}:${agent.role}`) % fallbacks.length];
+}
+
+function spriteFor(agent: Agent) {
+  return ROLE_SPRITES[spriteKeyFor(agent)];
 }
 
 function customDefinitionToAgent(definition: CustomAgentDefinition): Agent {
@@ -384,12 +396,12 @@ function customDefinitionToAgent(definition: CustomAgentDefinition): Agent {
     status: "idle",
     presence: "custom",
     task: runtimeReady
-      ? `Профиль готов для ${provider.label}`
+      ? `Profile ready for ${provider.label}`
       : definition.runtime.providerId === "unconfigured"
-        ? "Нужно выбрать runtime"
-        : "Adapter недоступен в текущем каталоге",
-    summary: `Кастомный профиль · ${office?.label ?? "цифровой кабинет"} · процесс не запущен`,
-    model: runtimeReady ? `${provider.label} · ${definition.runtime.model}` : "не выбрана",
+        ? "Choose a runtime"
+        : "Adapter unavailable in the current catalog",
+    summary: `Custom profile · ${office?.label ?? "digital office"} · process not running`,
+    model: runtimeReady ? `${provider.label} · ${definition.runtime.model}` : "not selected",
     effort: definition.runtime.reasoning,
     phase: runtimeReady ? `adapter:${definition.runtime.adapterId}` : "runtime:unconfigured",
     progress: 0,
@@ -416,6 +428,7 @@ function mergeLiveWithRoster(live: BureauState): BureauState {
         ...base,
         ...liveAgent,
         id: base.id,
+        name: base.name,
         sourceId: liveAgent.id,
         presence: "live",
       };
@@ -426,8 +439,8 @@ function mergeLiveWithRoster(live: BureauState): BureauState {
       status: "idle",
       presence: "standby",
       taskId: undefined,
-      task: "Ждёт живого назначения",
-      summary: "Постоянный состав бюро; живого события пока нет",
+      task: "Awaiting a live assignment",
+      summary: "Core bureau roster; no live event yet",
       phase: undefined,
       progress: 0,
       startedAt: undefined,
@@ -494,26 +507,18 @@ function progressFor(agent: Agent) {
 }
 
 function formatDuration(seconds = 0) {
-  if (seconds < 60) return `${Math.max(0, seconds)} сек`;
+  if (seconds < 60) return `${Math.max(0, seconds)} sec`;
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
-  if (minutes < 60) return rest ? `${minutes}м ${rest}с` : `${minutes} мин`;
-  return `${Math.floor(minutes / 60)}ч ${minutes % 60}м`;
-}
-
-function formatClock(date: Date) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(date);
+  if (minutes < 60) return rest ? `${minutes}m ${rest}s` : `${minutes} min`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
 function formatMoment(value?: string) {
-  if (!value) return "не указано";
+  if (!value) return "Not specified";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "не указано";
-  return new Intl.DateTimeFormat("ru-RU", {
+  if (Number.isNaN(date.getTime())) return "Not specified";
+  return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -540,7 +545,7 @@ function buildAssignments(state: BureauState, orchestrator?: Agent): RoutedAssig
       taskId: agent.taskId,
       fromAgentId: orchestrator?.id,
       toAgentId: agent.id,
-      title: agent.task ?? "Текущая задача",
+      title: agent.task ?? "Current task",
       summary: agent.summary,
       status: assignmentStatusFor(agent.status),
       assignedAt: agent.startedAt ?? agent.updatedAt ?? state.updatedAt,
@@ -564,6 +569,7 @@ function arrangeStage(agents: Agent[]) {
 }
 
 function AgentSprite({ agent }: { agent: Agent }) {
+  const gaze = GAZE_LAYOUTS[spriteKeyFor(agent)] ?? GAZE_LAYOUTS.coder;
   const style = {
     "--role-accent": roleColor(agent.role),
     "--agent-delay": `${stableHash(agent.id) % 700}ms`,
@@ -575,7 +581,20 @@ function AgentSprite({ agent }: { agent: Agent }) {
       <span className="sprite-motion">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="agent-sprite-image" src={spriteFor(agent)} alt="" draggable={false} />
-        <i className="sprite-beacon" />
+        <svg
+          className="gaze-up-layer"
+          viewBox={`0 0 ${gaze.width} ${gaze.height}`}
+          preserveAspectRatio="xMidYMax meet"
+          shapeRendering="crispEdges"
+          aria-hidden="true"
+        >
+          {gaze.eyes.map(([x, y, width, height], index) => (
+            <g key={`${x}:${y}:${index}`}>
+              <rect className="gaze-mask" x={x - 2} y={y - 2} width={width + 4} height={height + 4} />
+              <rect className="gaze-eye" x={x} y={y - 7} width={width} height={height} />
+            </g>
+          ))}
+        </svg>
         {agent.status === "working" && <i className="work-pixels"><b /><b /><b /></i>}
         {agent.status === "reviewing" && <i className="review-scan" />}
       </span>
@@ -615,10 +634,9 @@ function AgentHotspot({
       style={style}
       onClick={onSelect}
       aria-pressed={selected}
-      aria-label={`${agent.name}, ${meta.label}. ${assignment?.title ?? agent.task ?? "Без задачи"}`}
-      title={`${coordinates.label}: открыть карточку ${agent.name}`}
+      aria-label={`${agent.name}, ${meta.label}. ${assignment?.title ?? agent.task ?? "No task"}`}
+      title={`${coordinates.label}: open ${agent.name}`}
     >
-      <span className="hotspot-aura" aria-hidden="true" />
       <AgentSprite agent={agent} />
       <span className="agent-label">
         <i aria-hidden="true" />
@@ -626,8 +644,8 @@ function AgentHotspot({
           <strong>{agent.name}</strong>
           <small>
             {slot === "orchestrator"
-              ? agent.presence === "standby" ? "уровень 01 · standby" : "уровень 01 · раздаёт ↓"
-              : `уровень 02 · ${assignment?.taskId ?? meta.short}`}
+              ? agent.presence === "standby" ? "level 01 · standby" : "level 01 · dispatching ↓"
+              : `level 02 · ${assignment?.taskId ?? meta.short}`}
           </small>
         </span>
       </span>
@@ -731,7 +749,7 @@ function AgentBuilder({
     const prompt = systemPrompt.trim();
     if (prompt.length < 12 || !runtime || !runtimeValid) return;
     const sameAvatarCount = existing.filter((item) => item.avatarKey === avatarKey).length;
-    const baseName = ROLE_LABELS[avatarKey] ?? "Агент";
+    const baseName = ROLE_LABELS[avatarKey] ?? "Agent";
     const suffix = sameAvatarCount + 2;
     onCreate({
       id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
@@ -747,7 +765,7 @@ function AgentBuilder({
 
   return (
     <div className="builder-layer">
-      <button type="button" className="builder-scrim" onClick={onClose} aria-label="Закрыть конструктор" />
+      <button type="button" className="builder-scrim" onClick={onClose} aria-label="Close profile builder" />
       <div
         ref={dialogRef}
         className="agent-builder"
@@ -756,16 +774,16 @@ function AgentBuilder({
         aria-labelledby="builder-title"
         tabIndex={-1}
       >
-        <button type="button" className="builder-close" onClick={onClose} aria-label="Закрыть конструктор">×</button>
+        <button type="button" className="builder-close" onClick={onClose} aria-label="Close profile builder">×</button>
         <header className="builder-header">
-          <span>КОНСТРУКТОР ПРОФИЛЯ</span>
-          <h2 id="builder-title">Новый агент</h2>
-          <p>Кабинет + аватар + любой runtime + system prompt. Код интерфейса менять не нужно.</p>
+          <span>PROFILE BUILDER</span>
+          <h2 id="builder-title">New agent</h2>
+          <p>Office + avatar + any runtime + system prompt. No UI code changes required.</p>
         </header>
 
         <form onSubmit={submit}>
           <section className="builder-section">
-            <div className="builder-step"><b>01</b><span>Выбери кабинет</span></div>
+            <div className="builder-step"><b>01</b><span>Choose an office</span></div>
             <div className="office-picker">
               {OFFICE_TEMPLATES.map((item) => (
                 <button
@@ -786,7 +804,7 @@ function AgentBuilder({
 
           <section className="builder-section builder-middle">
             <div>
-              <div className="builder-step"><b>02</b><span>Выбери аватар</span></div>
+              <div className="builder-step"><b>02</b><span>Choose an avatar</span></div>
               <div className="avatar-picker">
                 {AVATAR_OPTIONS.map((item) => (
                   <button
@@ -805,7 +823,7 @@ function AgentBuilder({
               </div>
             </div>
 
-            <div className="builder-preview" aria-label={`Предпросмотр: ${avatar.label}, ${office.label}`}>
+            <div className="builder-preview" aria-label={`Preview: ${avatar.label}, ${office.label}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="preview-office" src={office.image} alt="" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -815,7 +833,7 @@ function AgentBuilder({
           </section>
 
           <section className="builder-section">
-            <div className="builder-step"><b>03</b><span>Настрой runtime</span></div>
+            <div className="builder-step"><b>03</b><span>Configure runtime</span></div>
             <div className="provider-picker">
               {RUNTIME_PROVIDERS.map((item) => (
                 <button
@@ -834,7 +852,7 @@ function AgentBuilder({
 
             <div className="runtime-fields">
               <label>
-                <span>Model ID <b>обязательно</b></span>
+                <span>Model ID <b>required</b></span>
                 <input
                   id="runtime-model"
                   value={model}
@@ -871,7 +889,7 @@ function AgentBuilder({
               </label>
               {provider.endpointMode !== "none" && (
                 <label>
-                  <span>Endpoint {provider.endpointMode === "required" && <b>обязательно</b>}</span>
+                  <span>Endpoint {provider.endpointMode === "required" && <b>required</b>}</span>
                   <input
                     id="runtime-endpoint"
                     type="url"
@@ -886,8 +904,8 @@ function AgentBuilder({
               {provider.credentialEnvMode !== "none" && (
                 <label>
                   <span>
-                    Имя env-переменной <i>не ключ</i>
-                    {provider.credentialEnvMode === "required" && <b>обязательно</b>}
+                    Environment variable <i>not the key</i>
+                    {provider.credentialEnvMode === "required" && <b>required</b>}
                   </span>
                   <input
                     id="runtime-credential-env"
@@ -901,7 +919,7 @@ function AgentBuilder({
                 </label>
               )}
             </div>
-            <p className="runtime-safety"><i>◆</i> Здесь хранится только конфигурация. API-ключ вводить нельзя; локальный adapter сам читает указанную env-переменную.</p>
+            <p className="runtime-safety"><i>◆</i> Configuration only. Never enter an API key here; the local adapter reads the named environment variable.</p>
           </section>
 
           <section className="builder-section">
@@ -912,13 +930,13 @@ function AgentBuilder({
               onChange={(event) => setSystemPrompt(event.target.value)}
               maxLength={6_000}
               rows={7}
-              placeholder="Ты — специализированный агент… Твоя задача… Критерии готовности…"
+              placeholder="You are a specialized agent… Your objective… Acceptance criteria…"
               required
             />
             <div className="builder-submit-row">
-              <p><i>◆</i> Prompt хранится только в localStorage этого браузера и не попадает в телеметрию.</p>
+              <p><i>◆</i> The prompt stays in this browser&apos;s localStorage and never enters telemetry.</p>
               <span>{systemPrompt.length}/6000</span>
-              <button type="submit" disabled={systemPrompt.trim().length < 12 || !runtimeValid}>+ СФОРМИРОВАТЬ АГЕНТА</button>
+              <button type="submit" disabled={systemPrompt.trim().length < 12 || !runtimeValid}>+ CREATE AGENT</button>
             </div>
           </section>
         </form>
@@ -971,20 +989,20 @@ function AssignmentInspector({
       aria-labelledby="inspector-title"
       tabIndex={-1}
     >
-      <button type="button" className="inspector-close" onClick={onClose} aria-label="Закрыть карточку">
+      <button type="button" className="inspector-close" onClick={onClose} aria-label="Close agent details">
         ×
       </button>
       <div className="inspector-topline">
         <span className="inspector-kicker">
-          {isOrchestrator ? "ЦЕНТР УПРАВЛЕНИЯ" : "НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА"}
+          {isOrchestrator ? "COMMAND CENTER" : "ASSIGNMENT FROM ORCHESTRATOR"}
         </span>
         <span className={`status-pill status-pill-${agent.status}`}><i />{assignmentLabel}</span>
       </div>
 
       <div className="route-title">
-        <span>{isOrchestrator ? "СТРАТЕГИЯ" : source?.name ?? "Внешняя очередь"}</span>
+        <span>{isOrchestrator ? "STRATEGY" : source?.name ?? "External queue"}</span>
         <b aria-hidden="true">{isOrchestrator ? "⌁" : "→"}</b>
-        <span>{isOrchestrator ? "ИСПОЛНИТЕЛИ" : agent.name}</span>
+        <span>{isOrchestrator ? "AGENTS" : agent.name}</span>
       </div>
 
       <div className="identity-line">
@@ -992,7 +1010,7 @@ function AssignmentInspector({
         <div><h2 id="inspector-title">{agent.name}</h2><p>{roleLabel(agent.role)}</p></div>
       </div>
 
-      {agent.stale && <div className="stale-warning">Сигнал давно не обновлялся.</div>}
+      {agent.stale && <div className="stale-warning">Signal has not been updated recently.</div>}
 
       {customOffice && (
         <>
@@ -1001,11 +1019,11 @@ function AssignmentInspector({
             <img className="custom-office-bg" src={customOffice.image} alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="custom-office-agent" src={spriteFor(agent)} alt="" />
-            <div><span>ЦИФРОВОЙ КАБИНЕТ</span><b>{customOffice.label}</b><small>System prompt сохранён локально</small></div>
+            <div><span>DIGITAL OFFICE</span><b>{customOffice.label}</b><small>System prompt saved locally</small></div>
           </section>
           {agent.customRuntime && customProvider && (
             <section className="runtime-profile-card">
-              <header><span>ЗАПРОШЕННЫЙ RUNTIME</span><em>CONFIG ONLY</em></header>
+              <header><span>REQUESTED RUNTIME</span><em>CONFIG ONLY</em></header>
               <div className="runtime-profile-title"><b>{customProvider.label}</b><code>{agent.customRuntime.adapterId}</code></div>
               <dl>
                 <div><dt>Model ID</dt><dd>{agent.customRuntime.model}</dd></div>
@@ -1014,8 +1032,8 @@ function AssignmentInspector({
                 <div><dt>Credentials</dt><dd>{agent.customRuntime.credentialEnv ? `$${agent.customRuntime.credentialEnv}` : "runtime session"}</dd></div>
               </dl>
               <p>{customProviderAvailable
-                ? "Профиль сохранён. Фактическая модель появится только после подтверждения локального adapter."
-                : "Provider отсутствует в текущем каталоге: конфигурация сохранена, но adapter недоступен."}</p>
+                ? "Profile saved. The actual model appears only after the local adapter confirms it."
+                : "Provider is missing from this catalog: configuration preserved, adapter unavailable."}</p>
             </section>
           )}
           {onDelete && (
@@ -1024,7 +1042,7 @@ function AssignmentInspector({
               className={`delete-custom-agent${deleteArmed ? " is-armed" : ""}`}
               onClick={() => deleteArmed ? onDelete() : setDeleteArmed(true)}
             >
-              {deleteArmed ? "Нажми ещё раз — удалить" : "Удалить локальный профиль"}
+              {deleteArmed ? "Click again to delete" : "Delete local profile"}
             </button>
           )}
         </>
@@ -1032,38 +1050,38 @@ function AssignmentInspector({
 
       <section className="task-card">
         <div className="task-card-heading">
-          <span>{isOrchestrator ? "ТЕКУЩАЯ ЦЕЛЬ" : "ПЕРЕДАННАЯ ЗАДАЧА"}</span>
+          <span>{isOrchestrator ? "CURRENT OBJECTIVE" : "ASSIGNED TASK"}</span>
           <code>{assignment?.taskId ?? agent.taskId ?? "STANDBY"}</code>
         </div>
-        <h3>{assignment?.title ?? agent.task ?? "Ожидает назначения"}</h3>
-        <p>{assignment?.summary ?? agent.summary ?? "Безопасное резюме пока не поступило."}</p>
+        <h3>{assignment?.title ?? agent.task ?? "Awaiting assignment"}</h3>
+        <p>{assignment?.summary ?? agent.summary ?? "No safe summary received yet."}</p>
       </section>
 
       {assignment?.inferred && (
-        <p className="inference-note">Маршрут восстановлен по текущей задаче агента.</p>
+        <p className="inference-note">Route inferred from the agent&apos;s current task.</p>
       )}
 
       <section className="progress-block">
-        <div><span>Фаза: {agent.phase?.replace(/^(tool:|adapter:|runtime:)/, "") || STATUS_META[agent.status].short}</span><strong>{progress}%</strong></div>
-        <div className="progress-track" aria-label={`Прогресс ${progress}%`}><i style={{ width: `${progress}%` }} /></div>
+        <div><span>Phase: {agent.phase?.replace(/^(tool:|adapter:|runtime:)/, "") || STATUS_META[agent.status].short}</span><strong>{progress}%</strong></div>
+        <div className="progress-track" aria-label={`Progress ${progress}%`}><i style={{ width: `${progress}%` }} /></div>
       </section>
 
       <dl className="detail-grid">
-        <div><dt>{agent.customRuntime ? "Запрошенная модель" : "Модель"}</dt><dd>{agent.model || "не указана"}</dd></div>
-        <div><dt>{agent.customRuntime ? "Запрошенный reasoning" : "Reasoning"}</dt><dd>{agent.effort || "по умолчанию"}</dd></div>
-        <div><dt>В работе</dt><dd>{formatDuration(agent.elapsedSeconds)}</dd></div>
-        <div><dt>Передано</dt><dd>{formatMoment(assignment?.assignedAt ?? agent.startedAt)}</dd></div>
+        <div><dt>{agent.customRuntime ? "Requested model" : "Model"}</dt><dd>{agent.model || "Not specified"}</dd></div>
+        <div><dt>{agent.customRuntime ? "Requested reasoning" : "Reasoning"}</dt><dd>{agent.effort || "provider default"}</dd></div>
+        <div><dt>Elapsed</dt><dd>{formatDuration(agent.elapsedSeconds)}</dd></div>
+        <div><dt>Assigned</dt><dd>{formatMoment(assignment?.assignedAt ?? agent.startedAt)}</dd></div>
       </dl>
 
       {agent.review && (
         <section className="review-card">
-          <div><span>ВЕРИФИКАЦИЯ</span><b>{agent.review.status || "в процессе"}</b></div>
-          <p>{agent.review.verdict || "Результат ещё проверяется."}</p>
-          <small>Проверяющий: {agent.review.reviewer || "не назначен"} · попытка {agent.review.attempts ?? 1}</small>
+          <div><span>VERIFICATION</span><b>{agent.review.status || "in progress"}</b></div>
+          <p>{agent.review.verdict || "The result is still being reviewed."}</p>
+          <small>Verifier: {agent.review.reviewer || "unassigned"} · attempt {agent.review.attempts ?? 1}</small>
         </section>
       )}
 
-      <div className="privacy-note"><i aria-hidden="true">◆</i><p>Только безопасное резюме: без промптов, файлов и внутренних рассуждений.</p></div>
+      <div className="privacy-note"><i aria-hidden="true">◆</i><p>Safe summary only: no prompts, files, or private reasoning.</p></div>
     </aside>
   );
 }
@@ -1074,10 +1092,12 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"live" | "demo">("live");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
   const [customDefinitions, setCustomDefinitions] = useState<CustomAgentDefinition[]>([]);
   const [customDefinitionsLoaded, setCustomDefinitionsLoaded] = useState(false);
-  const [clock, setClock] = useState<Date | null>(null);
   const inspectorRef = useRef<HTMLElement>(null);
+  const teamPanelRef = useRef<HTMLElement>(null);
+  const teamButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1160,15 +1180,6 @@ export default function Home() {
     return () => window.removeEventListener("storage", syncAcrossTabs);
   }, []);
 
-  useEffect(() => {
-    const initialTick = window.setTimeout(() => setClock(new Date()), 0);
-    const ticker = window.setInterval(() => setClock(new Date()), 1_000);
-    return () => {
-      window.clearTimeout(initialTick);
-      window.clearInterval(ticker);
-    };
-  }, []);
-
   const hasLiveAgents = Boolean(liveState?.agents.length);
   const mergedLiveState = useMemo(
     () => (liveState ? mergeLiveWithRoster(liveState) : null),
@@ -1208,7 +1219,35 @@ export default function Home() {
   const liveCount = agents.filter((agent) => agent.presence === "live").length;
   const standbyCount = agents.filter((agent) => agent.presence === "standby").length;
   const customCount = agents.filter((agent) => agent.presence === "custom").length;
-  const activeCount = agents.filter((agent) => ACTIVE_STATUSES.has(agent.status)).length;
+
+  useEffect(() => {
+    if (!teamOpen) return;
+    const focusTimer = window.setTimeout(() => {
+      teamPanelRef.current?.querySelector<HTMLButtonElement>(".team-agent")?.focus();
+    }, 0);
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !teamPanelRef.current?.contains(target) &&
+        !teamButtonRef.current?.contains(target)
+      ) {
+        setTeamOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setTeamOpen(false);
+      teamButtonRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [teamOpen]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -1260,6 +1299,11 @@ export default function Home() {
     setViewMode((mode) => (mode === "live" ? "demo" : "live"));
   };
 
+  const selectAgentFromTeam = (agentId: string) => {
+    setTeamOpen(false);
+    setSelectedId(agentId);
+  };
+
   const createCustomAgent = (definition: CustomAgentDefinition) => {
     setCustomDefinitions((current) => [
       ...current.slice(-(CUSTOM_AGENT_LIMIT - 1)),
@@ -1276,10 +1320,10 @@ export default function Home() {
   return (
     <main className="bureau-shell">
       <div className="page-noise" aria-hidden="true" />
-      <h1 className="visually-hidden">Агентское бюро — ЖИВОЙ ОФИС</h1>
-      <p className="visually-hidden">МАРШРУТЫ ЗАДАЧ · НАЗНАЧЕНИЕ ОТ ОРКЕСТРАТОРА · ПУЛ АГЕНТОВ</p>
+      <h1 className="visually-hidden">Agent Bureau — LIVE OFFICE</h1>
+      <p className="visually-hidden">TASK ROUTES · ORCHESTRATOR ASSIGNMENTS · AGENT ROSTER</p>
 
-      <section className="scene-scroll" aria-label="Живой офис Агентского бюро">
+      <section className="scene-scroll" aria-label="Agent Bureau live office">
         <figure className="office-stage">
           {/* The empty office is the environment layer. Every agent is rendered
               separately below so live roster changes can animate into the scene. */}
@@ -1287,7 +1331,7 @@ export default function Home() {
           <img
             className="office-art"
             src="/office-departments-v3.png"
-            alt="Пиксельный интерьер Агентского бюро с восемью отдельными ролевыми кабинетами"
+            alt="Pixel-art Agent Bureau interior with eight dedicated role offices"
             width={1672}
             height={941}
           />
@@ -1337,7 +1381,7 @@ export default function Home() {
                 type="button"
                 className={`task-packet packet-${slot}${selectedId === agent.id ? " is-selected" : ""}`}
                 onClick={() => setSelectedId(agent.id)}
-                aria-label={`Открыть задачу ${assignment.title}, переданную агенту ${agent.name}`}
+                aria-label={`Open task ${assignment.title}, assigned to ${agent.name}`}
                 title={`${assignment.taskId ?? "TASK"}: ${assignment.title}`}
               >
                 <i aria-hidden="true">◆</i><span>{assignment.taskId ?? "TASK"}</span>
@@ -1351,65 +1395,97 @@ export default function Home() {
               className="overflow-counter"
               onClick={() => setSelectedId(stage.overflow[0]?.id ?? null)}
             >
-              +{stage.overflow.length} в цифровом аннексе
+              +{stage.overflow.length} in the digital annex
             </button>
           )}
         </figure>
       </section>
 
-      <header className="observer-hud">
-        <div className="hud-brand"><span>OBSERVER</span><b>v0.5</b></div>
-        <button
-          type="button"
-          className="mode-switch"
-          onClick={toggleMode}
-          disabled={!hasLiveAgents}
-          title={hasLiveAgents ? "Переключить live и demo" : "Collector недоступен — показан demo-режим"}
-        >
-          <i className={`connection-dot ${connection}`} />
-          <span><b>{usingDemo ? "DEMO" : "LIVE"}</b><small>{usingDemo ? `${agents.length} агентов` : `${liveCount} live · ${standbyCount} standby${customCount ? ` · ${customCount} custom` : ""}`}</small></span>
-        </button>
-        <div className="hud-project"><small>ПРОЕКТ</small><strong>{state.project}</strong></div>
-        <div className="hud-stat"><strong>{activeCount}</strong><small>активны</small></div>
-        <time dateTime={clock?.toISOString()}>{clock ? formatClock(clock) : "--:--:--"}</time>
-      </header>
-
-      <div className="scene-hint" aria-hidden="true"><span>↘</span> нажми на агента или пакет</div>
-
-      <nav className="crew-dock" aria-label="Пул агентов">
-        <span className="dock-title"><i>›_</i><b>КОМАНДА</b></span>
-        <div className="dock-agents">
-          {agents.map((agent) => {
-            const assignment = latestAssignmentByAgent.get(agent.id);
-            return (
+      <div className="team-controls">
+        {teamOpen && (
+          <aside
+            id="team-roster-panel"
+            ref={teamPanelRef}
+            className="team-popover"
+            role="dialog"
+            aria-label="Team roster"
+          >
+            <header>
+              <span>TEAM ROSTER</span>
+              <b>{agents.length} agents</b>
+            </header>
+            <div className="team-grid">
+              {agents.map((agent) => {
+                const assignment = latestAssignmentByAgent.get(agent.id);
+                const task = assignment?.title ?? agent.task ?? "No task";
+                return (
+                  <button
+                    type="button"
+                    key={agent.id}
+                    className={`team-agent ${selectedId === agent.id ? "active " : ""}presence-${agent.presence}`}
+                    onClick={() => selectAgentFromTeam(agent.id)}
+                    aria-label={`${agent.name}, ${roleLabel(agent.role)}, ${STATUS_META[agent.status].label}. ${task}`}
+                    title={task}
+                  >
+                    <span className="team-avatar">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={spriteFor(agent)} alt="" />
+                      <i className={`crew-signal status-${agent.status}`} style={{ "--role-accent": roleColor(agent.role) } as CSSProperties} />
+                    </span>
+                    <span>
+                      <strong>{agent.name}</strong>
+                      <small>{roleLabel(agent.role)} · {agent.presence === "standby" ? "standby" : STATUS_META[agent.status].short}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <footer>
               <button
                 type="button"
-                key={agent.id}
-                className={`${selectedId === agent.id ? "active " : ""}presence-${agent.presence}`}
-                onClick={() => setSelectedId(agent.id)}
-                title={assignment?.title ?? agent.task ?? "Без задачи"}
+                className="team-mode-switch"
+                onClick={toggleMode}
+                disabled={!hasLiveAgents}
+                title={hasLiveAgents ? "Switch between live and sample data" : "Collector offline — sample data is displayed"}
               >
-                <i className={`crew-signal status-${agent.status}`} style={{ "--role-accent": roleColor(agent.role) } as CSSProperties} />
-                <span><strong>{agent.name}</strong><small>{agent.presence === "standby" ? "standby" : STATUS_META[agent.status].short}</small></span>
+                <i className={`connection-dot ${connection}`} />
+                <span>{usingDemo
+                  ? hasLiveAgents ? "Sample data" : "Collector offline · sample data"
+                  : `Live connection · ${liveCount} live · ${standbyCount} standby${customCount ? ` · ${customCount} custom` : ""}`}</span>
               </button>
-            );
-          })}
-          <button
-            type="button"
-            className="add-agent-button"
-            onClick={() => {
-              setSelectedId(null);
-              setBuilderOpen(true);
-            }}
-          >
-            <i>+</i><span><strong>Добавить агента</strong><small>аватар · runtime · модель</small></span>
-          </button>
-        </div>
-      </nav>
+            </footer>
+          </aside>
+        )}
+
+        <button
+          ref={teamButtonRef}
+          type="button"
+          className={`team-toggle${teamOpen ? " active" : ""}`}
+          aria-expanded={teamOpen}
+          aria-controls="team-roster-panel"
+          aria-haspopup="dialog"
+          onClick={() => setTeamOpen((open) => !open)}
+        >
+          <i>›_</i><span>TEAM</span><b>{agents.length}</b>
+        </button>
+        <button
+          type="button"
+          className="add-agent-button"
+          aria-label="Add agent"
+          title="Add agent"
+          onClick={() => {
+            setTeamOpen(false);
+            setSelectedId(null);
+            setBuilderOpen(true);
+          }}
+        >
+          <i>+</i><span>ADD AGENT</span>
+        </button>
+      </div>
 
       {selectedAgent && (
         <>
-          <button type="button" className="drawer-scrim" onClick={() => setSelectedId(null)} aria-label="Закрыть карточку" />
+          <button type="button" className="drawer-scrim" onClick={() => setSelectedId(null)} aria-label="Close agent details" />
           <AssignmentInspector
             agent={selectedAgent}
             assignment={selectedAssignment}

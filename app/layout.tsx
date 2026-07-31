@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
-const title = "Агентское бюро — живой офис";
+const title = "Agent Bureau — Live Office";
 const description =
-  "Локальная пиксельная карта работы оркестратора, специалистов и верификаторов.";
+  "A local pixel map of the orchestrator, specialists, and verifiers at work.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -27,14 +27,14 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      locale: "ru_RU",
+      locale: "en_US",
       type: "website",
       images: [
         {
           url: socialImage,
           width: 1672,
           height: 941,
-          alt: "Пиксельный офис Агентского бюро",
+          alt: "Pixel-art Agent Bureau office",
         },
       ],
     },
@@ -53,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Bureau"
-  short_description: "Оркестрация специалистов с проверкой и памятью решений"
-  default_prompt: "Используй $agent-bureau, чтобы разложить задачу по ролям, запустить нужных специалистов, проверить результаты и сохранить решения."
+  short_description: "Orchestrate specialists with review and memory"
+  default_prompt: "Use $agent-bureau to assign the task by role, run the necessary specialists, review their results, and preserve decisions."

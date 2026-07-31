@@ -10,13 +10,13 @@ if command -v node >/dev/null 2>&1; then
 elif [[ -x "$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node" ]]; then
   BUREAU_NODE="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
 else
-  echo "Не найден Node.js. Открой проект в Codex и попроси запустить Agent Bureau Office."
-  read -r "?Нажми Enter, чтобы закрыть окно."
+  echo "Node.js was not found. Open the project in Codex and ask it to start Agent Bureau Office."
+  read -r "?Press Enter to close this window."
   exit 1
 fi
 
-echo "Агентское бюро запускается…"
-echo "Через несколько секунд открой http://localhost:3000"
-echo "Чтобы остановить офис, нажми Control-C."
+echo "Agent Bureau is starting…"
+echo "Open http://localhost:3000 in a few seconds."
+echo "Press Control-C to stop the office."
 
 exec "$BUREAU_NODE" scripts/office.mjs

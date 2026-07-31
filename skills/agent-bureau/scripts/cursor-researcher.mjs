@@ -34,7 +34,7 @@ try {
   if (!binary) {
     throw new BureauError(
       "cursor_cli_missing",
-      "Cursor Agent CLI не установлен. Установите официальный CLI, затем выполните авторизацию.",
+      "Cursor Agent CLI is not installed. Install the official CLI, then authenticate.",
       2,
     );
   }
@@ -49,7 +49,7 @@ try {
     process.exitCode = 0;
   } else {
     const task = await readTask(options);
-    if (!task.trim()) throw new BureauError("empty_task", "Исследовательская задача пуста.", 4);
+    if (!task.trim()) throw new BureauError("empty_task", "The research task is empty.", 4);
     const taskId = safeId(options.taskId || `research-${Date.now()}`);
     const agentId = `researcher-${taskId}`;
     const outputPath = safeOutputPath(
@@ -60,13 +60,13 @@ try {
     await emitEvent({
       type: "agent.spawned",
       agentId,
-      name: "Ресерчер",
+      name: "Researcher",
       role: "researcher",
       taskId,
       task: task.slice(0, 240),
       model: modelProfile.slug,
       effort: "high",
-      summary: "Проверяет доступность Grok 4.5 High Fast",
+      summary: "Checking Grok 4.5 High Fast availability",
     });
 
     const result = await runResearch(binary, task, {
@@ -85,7 +85,7 @@ try {
       result: result.text,
     });
     if (Buffer.byteLength(report, "utf8") > MAX_REPORT_BYTES) {
-      throw new BureauError("report_too_large", "Отчёт превысил лимит 2 MiB.", 5);
+      throw new BureauError("report_too_large", "The report exceeded the 2 MiB limit.", 5);
     }
 
     await mkdir(dirname(outputPath), { recursive: true });
@@ -93,13 +93,13 @@ try {
     await emitEvent({
       type: "artifact.submitted",
       agentId,
-      name: "Ресерчер",
+      name: "Researcher",
       role: "researcher",
       taskId,
       task: task.slice(0, 240),
       model: modelProfile.slug,
       effort: "high",
-      summary: "Исследовательский отчёт передан на верификацию",
+      summary: "Research report submitted for verification",
       progress: 100,
     });
 
@@ -110,7 +110,7 @@ try {
   await emitEvent({
     type: "task.blocked",
     agentId: "researcher",
-    name: "Ресерчер",
+    name: "Researcher",
     role: "researcher",
     model: requestedModel,
     effort: "high",
@@ -130,25 +130,25 @@ function parseArgs(args) {
     else if (arg === "--task-id") parsed.taskId = requiredValue(args, ++index, arg);
     else if (arg === "--output") parsed.output = requiredValue(args, ++index, arg);
     else if (arg === "--cwd") parsed.cwd = requiredValue(args, ++index, arg);
-    else throw new BureauError("unknown_argument", `Неизвестный аргумент: ${arg}`, 4);
+    else throw new BureauError("unknown_argument", `Unknown argument: ${arg}`, 4);
   }
   return parsed;
 }
 
 function requiredValue(args, index, flag) {
   const value = args[index];
-  if (!value) throw new BureauError("missing_argument", `Для ${flag} требуется значение.`, 4);
+  if (!value) throw new BureauError("missing_argument", `${flag} requires a value.`, 4);
   return value;
 }
 
 async function readTask(parsed) {
   if (parsed.task && parsed.taskFile) {
-    throw new BureauError("ambiguous_task", "Используйте только --task или --task-file.", 4);
+    throw new BureauError("ambiguous_task", "Use either --task or --task-file, not both.", 4);
   }
   if (parsed.taskFile) {
     const taskPath = resolve(projectDir, parsed.taskFile);
     if (!isWithin(projectDir, taskPath)) {
-      throw new BureauError("task_outside_project", "Файл задачи должен находиться в проекте.", 4);
+      throw new BureauError("task_outside_project", "The task file must be inside the project.", 4);
     }
     return readFile(taskPath, "utf8");
   }
@@ -192,7 +192,7 @@ async function listModels(binary) {
   }
   throw new BureauError(
     "cursor_not_ready",
-    `Cursor Agent CLI не готов. Проверьте авторизацию командой cursor-agent login.${safeDetail(lastError)}`,
+    `Cursor Agent CLI is not ready. Check authentication with cursor-agent login.${safeDetail(lastError)}`,
     3,
   );
 }
@@ -216,13 +216,13 @@ function resolveModelProfile(output) {
     if (exact) return exact;
     throw new BureauError(
       "model_ambiguous",
-      `Cursor сообщил несколько профилей Grok 4.5 High Fast: ${candidates.map(({ slug }) => slug).join(", ")}.`,
+      `Cursor reported multiple Grok 4.5 High Fast profiles: ${candidates.map(({ slug }) => slug).join(", ")}.`,
       3,
     );
   }
   throw new BureauError(
     "model_unavailable",
-    `Аккаунт Cursor не сообщил обязательный профиль ${MODEL_PROFILE}. Подмена запрещена.`,
+    `The Cursor account did not report the required ${MODEL_PROFILE} profile. Substitution is not allowed.`,
     3,
   );
 }
@@ -233,14 +233,14 @@ async function runResearch(binary, task, context) {
   await emitEvent({
     type: "task.started",
     agentId: context.agentId,
-    name: "Ресерчер",
+    name: "Researcher",
     role: "researcher",
     taskId: context.taskId,
     task: task.slice(0, 240),
     model: context.modelProfile.slug,
     effort: "high",
     phase: "research",
-    summary: "Ищет и проверяет внешние источники",
+    summary: "Searching and verifying external sources",
   });
 
   return new Promise((resolvePromise, rejectPromise) => {
@@ -271,7 +271,7 @@ async function runResearch(binary, task, context) {
 
     const timeout = setTimeout(() => {
       child.kill("SIGTERM");
-      rejectOnce(new BureauError("research_timeout", "Researcher остановлен по лимиту времени.", 5));
+      rejectOnce(new BureauError("research_timeout", "Researcher stopped after reaching the time limit.", 5));
     }, context.timeoutMs);
 
     child.stdout.setEncoding("utf8");
@@ -294,15 +294,15 @@ async function runResearch(binary, task, context) {
       clearTimeout(timeout);
       if (settled) return;
       if (code !== 0) {
-        rejectOnce(new BureauError("cursor_run_failed", `Cursor Researcher завершился с кодом ${code}.${safeDetail(stderr)}`, 5));
+        rejectOnce(new BureauError("cursor_run_failed", `Cursor Researcher exited with code ${code}.${safeDetail(stderr)}`, 5));
         return;
       }
       if (!actualModel || !isActualProfile(actualModel, context.modelProfile)) {
-        rejectOnce(new BureauError("model_mismatch", "Не удалось подтвердить фактический профиль Grok 4.5 High Fast.", 5));
+        rejectOnce(new BureauError("model_mismatch", "Could not attest the actual Grok 4.5 High Fast profile.", 5));
         return;
       }
       if (!finalText.trim()) {
-        rejectOnce(new BureauError("empty_report", "Cursor не вернул финальный исследовательский отчёт.", 5));
+        rejectOnce(new BureauError("empty_report", "Cursor did not return a final research report.", 5));
         return;
       }
       settled = true;
@@ -320,7 +320,7 @@ async function runResearch(binary, task, context) {
         actualModel = typeof event.model === "string" ? event.model : "";
         if (!isActualProfile(actualModel, context.modelProfile)) {
           child.kill("SIGTERM");
-          rejectOnce(new BureauError("model_mismatch", `Cursor запустил ${actualModel || "unknown"} вместо ${context.modelProfile.display} (${context.modelProfile.slug}).`, 5));
+          rejectOnce(new BureauError("model_mismatch", `Cursor launched ${actualModel || "unknown"} instead of ${context.modelProfile.display} (${context.modelProfile.slug}).`, 5));
         }
       }
       if (event?.type === "tool_call" && event?.subtype === "started") {
@@ -329,7 +329,7 @@ async function runResearch(binary, task, context) {
           child.kill("SIGTERM");
           rejectOnce(new BureauError(
             "research_budget_exceeded",
-            `Researcher остановлен после ${context.maxToolCalls} tool calls.`,
+            `Researcher stopped after ${context.maxToolCalls} tool calls.`,
             5,
           ));
           return;
@@ -337,7 +337,7 @@ async function runResearch(binary, task, context) {
         void emitEvent({
           type: "heartbeat",
           agentId: context.agentId,
-          name: "Ресерчер",
+          name: "Researcher",
           role: "researcher",
           taskId: context.taskId,
           model: context.modelProfile.slug,
@@ -361,17 +361,17 @@ async function runResearch(binary, task, context) {
 
 function buildPrompt(task, modelProfile) {
   return [
-    "Ты Researcher агентского бюро. Работай в Ask mode и ничего не изменяй в проекте.",
-    "Нужен доказательный ответ для решения оркестратора, а не общий обзор.",
-    "Используй первичные и официальные источники в приоритете.",
-    "Для изменчивых фактов указывай дату. Не выдумывай подтверждение.",
-    "Лимит: не более двух раундов поиска и двенадцати поисковых запросов.",
-    `Runtime preflight уже подтвердил профиль ${modelProfile.slug} (${modelProfile.display}); не утверждай, что CLI или model list не проверялись.`,
-    "Фактическая модель этой сессии отдельно проверяется adapter по system/init.",
-    "Верни Markdown с разделами: Короткий ответ; Выводы; Противоречия и неизвестное; Рекомендация оркестратору; Источники; Журнал поиска.",
-    "В журнале указывай запросы и границы поиска, но не раскрывай скрытые пошаговые рассуждения.",
+    "You are the Agent Bureau Researcher. Work in Ask mode and do not change the project.",
+    "Provide an evidence-based answer for the orchestrator's decision, not a general overview.",
+    "Prioritize primary and official sources.",
+    "Date volatile facts. Never invent confirmation.",
+    "Limit the work to two research rounds and twelve search queries.",
+    `Runtime preflight has already confirmed ${modelProfile.slug} (${modelProfile.display}); do not claim that the CLI or model list was not checked.`,
+    "The adapter separately attests this session's actual model from system/init.",
+    "Return Markdown with these sections: Short answer; Findings; Conflicts and unknowns; Recommendation to the orchestrator; Sources; Search log.",
+    "In the log, list queries and search boundaries without revealing hidden step-by-step reasoning.",
     "",
-    "Задача:",
+    "Task:",
     task.trim(),
   ].join("\n");
 }
@@ -391,13 +391,13 @@ function formatReport({ task, taskId, requestedModel: modelSlug, actualModel, re
   return [
     `# Research report — ${taskId}`,
     "",
-    `- Дата актуальности: ${now}`,
-    `- Запрошенный профиль: ${MODEL_PROFILE}`,
-    `- Запрошенный Cursor slug: ${modelSlug}`,
-    `- Фактическая модель: ${actualModel}`,
+    `- Freshness date: ${now}`,
+    `- Requested profile: ${MODEL_PROFILE}`,
+    `- Requested Cursor slug: ${modelSlug}`,
+    `- Actual model: ${actualModel}`,
     "- Runtime: Cursor Agent CLI / Ask mode",
     "",
-    "## Исследовательская задача",
+    "## Research task",
     "",
     task.trim(),
     "",
@@ -408,7 +408,7 @@ function formatReport({ task, taskId, requestedModel: modelSlug, actualModel, re
 
 function cleanResearchResult(result) {
   const text = result.trim();
-  const markers = ["# Research:", "## Короткий ответ"];
+  const markers = ["# Research:", "## Short answer"];
   const offsets = markers
     .map((marker) => text.indexOf(marker))
     .filter((offset) => offset >= 0);
@@ -419,7 +419,7 @@ function cleanResearchResult(result) {
 function safeOutputPath(output, root) {
   const target = isAbsolute(output) ? resolve(output) : resolve(root, output);
   if (!isWithin(root, target)) {
-    throw new BureauError("output_outside_project", "Отчёт должен сохраняться внутри проекта.", 4);
+    throw new BureauError("output_outside_project", "The report must be saved inside the project.", 4);
   }
   return target;
 }
@@ -486,10 +486,10 @@ async function emitEvent(event) {
 function safeDetail(text) {
   if (!text) return "";
   const cleaned = text.replace(/\s+/g, " ").trim().slice(0, 280);
-  return cleaned ? ` Деталь: ${cleaned}` : "";
+  return cleaned ? ` Details: ${cleaned}` : "";
 }
 
 function normalizeError(error) {
   if (error instanceof BureauError) return error;
-  return new BureauError("unexpected_error", error instanceof Error ? error.message : "Неизвестная ошибка.", 1);
+  return new BureauError("unexpected_error", error instanceof Error ? error.message : "Unknown error.", 1);
 }

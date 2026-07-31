@@ -25,6 +25,6 @@ for (let index = 0; index < toolCalls; index += 1) {
 process.stdout.write(`${JSON.stringify({
   type: "result",
   subtype: "success",
-  result: "Проверяю источники.\n## Короткий ответ\n\nПрофиль подтверждён.\n\n## Источники\n\n- https://cursor.com/grok",
+  result: "Checking sources.\n## Short answer\n\nProfile confirmed.\n\n## Sources\n\n- https://cursor.com/grok",
   session_id: "fake-session",
 })}\n`);

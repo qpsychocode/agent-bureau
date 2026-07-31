@@ -10,7 +10,7 @@ if command -v node >/dev/null 2>&1; then
 elif [[ -x "$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node" ]]; then
   BUREAU_NODE="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
 else
-  echo "Не найден Node.js. Открой проект в Codex и попроси запустить Researcher."
+  echo "Node.js was not found. Open the project in Codex and ask it to start the Researcher."
   exit 1
 fi
 

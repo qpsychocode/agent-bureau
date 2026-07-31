@@ -1,17 +1,16 @@
 # Runtime adapters
 
-Agent Bureau разделяет две вещи:
+Agent Bureau separates two concepts:
 
-1. **Requested runtime** — конфигурация, которую пользователь собрал в браузере.
-2. **Actual runtime** — процесс и модель, подтверждённые локальным адаптером.
+1. **Requested runtime** — configuration assembled by the user in the browser.
+2. **Actual runtime** — the process and model confirmed by a local adapter.
 
-Публичная страница на Vercel работает только с первой частью. Она не запускает
-CLI, не вызывает указанный endpoint и не имеет доступа к локальным секретам.
+The public Vercel page supports only the first concept. It does not start a CLI,
+call the configured endpoint, or access local secrets.
 
-## Формат каталога
+## Catalog format
 
-Карточки конструктора читаются из `config/runtime-providers.json`. Минимальная
-запись:
+Builder cards are read from `config/runtime-providers.json`. A minimal record:
 
 ```json
 {
@@ -20,8 +19,8 @@ CLI, не вызывает указанный endpoint и не имеет дос
   "badge": "LOCAL",
   "adapterId": "my-runtime-cli",
   "adapterMode": "fixed",
-  "description": "Локальный CLI adapter",
-  "modelPlaceholder": "Точный model ID",
+  "description": "Local CLI adapter",
+  "modelPlaceholder": "Exact model ID",
   "defaultReasoning": "provider-default",
   "endpointMode": "optional",
   "credentialEnvMode": "optional",
@@ -29,18 +28,19 @@ CLI, не вызывает указанный endpoint и не имеет дос
 }
 ```
 
-`endpointMode` и `credentialEnvMode` принимают `none`, `optional` или
-`required`. `adapterMode` принимает `fixed` для каталожного адаптера или
-`editable` для пользовательского adapter ID. Model ID и reasoning остаются произвольными безопасными строками:
-адаптер проверяет, поддерживает ли их конкретный установленный runtime.
+`endpointMode` and `credentialEnvMode` accept `none`, `optional`, or `required`.
+`adapterMode` accepts `fixed` for a catalog adapter or `editable` for a custom
+adapter ID. Model ID and reasoning remain arbitrary safe strings; the adapter
+checks whether the installed runtime supports them.
 
-Каталог — только декларативные данные. Не добавляйте туда исполняемую команду,
-аргументы shell или значение API-ключа. `adapterId` ссылается на заранее
-установленный и доверенный локальный код.
+The catalog is declarative data only. Never add executable commands, shell
+arguments, or API-key values. `adapterId` points to trusted, preinstalled local
+code.
 
-## Профиль v2
+## v2 profile
 
-Профиль проверяется по `config/agent-profile.schema.json`. Его runtime-часть:
+Profiles are validated against `config/agent-profile.schema.json`. The runtime
+portion looks like this:
 
 ```json
 {
@@ -53,13 +53,13 @@ CLI, не вызывает указанный endpoint и не имеет дос
 }
 ```
 
-`credentialEnv` — имя переменной, не секрет. Локальный процесс читает значение
-из своего окружения. В профиле запрещены URL credentials, query/hash и имена с
-публичными web-префиксами `NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`.
+`credentialEnv` is a variable name, not a secret. The local process reads its
+value from the environment. Profiles reject URL credentials, query/hash values,
+and names with public web prefixes such as `NEXT_PUBLIC_`, `VITE_`, or `PUBLIC_`.
 
-## Контракт доверенного адаптера
+## Trusted adapter contract
 
-Исполняемый адаптер должен реализовать три операции:
+An executable adapter implements three operations:
 
 ```ts
 type RuntimeAdapter = {
@@ -75,23 +75,24 @@ type RuntimeAdapter = {
 }
 ```
 
-Перед `start` адаптер обязан:
+Before `start`, the adapter must:
 
-- найти локальный CLI/SDK и проверить его версию;
-- убедиться, что запрошенная модель доступна, без тихой подмены;
-- прочитать секрет только по `credentialEnv` из окружения процесса;
-- проверить endpoint по локальной политике безопасности; remote plain HTTP
-  должен быть отклонён или требовать явного подтверждения;
-- ограничить время, объём вывода и число повторных запусков.
+- locate the local CLI/SDK and check its version;
+- confirm that the requested model is available, without silent substitution;
+- read a secret only from the process environment using `credentialEnv`;
+- validate the endpoint against local security policy; remote plain HTTP must be
+  rejected or require explicit confirmation;
+- bound execution time, output size, and retry count.
 
-Точные флаги Codex, Cursor, Claude Code, Ollama или другого CLI относятся к коду
-конкретного адаптера: они меняются чаще, чем переносимый профиль.
+Exact flags for Codex, Cursor, Claude Code, Ollama, or another CLI belong in the
+specific adapter implementation because they change more often than the portable
+profile.
 
-## Телеметрия
+## Telemetry
 
-После успешного preflight/start адаптер отправляет в локальный collector
-нормализованные события `task.assigned`, `task.started`, `task.completed`,
-`task.blocked` или `task.failed`. В событии указываются **фактические** значения:
+After successful preflight/start, the adapter sends normalized
+`task.assigned`, `task.started`, `task.completed`, `task.blocked`, or
+`task.failed` events to the local collector. Events contain **actual** values:
 
 ```json
 {
@@ -102,22 +103,21 @@ type RuntimeAdapter = {
   "model": "provider-confirmed-model-id",
   "effort": "high",
   "phase": "research",
-  "summary": "Проверяет официальные источники"
+  "summary": "Verify official sources"
 }
 ```
 
-System prompt, API-ключи, transcript и сырой tool output в telemetry не входят.
-Collector дополнительно применяет allowlist и ограничения размера.
+System prompts, API keys, transcripts, and raw tool output never enter telemetry.
+The collector applies an additional allowlist and size limits.
 
-## Добавление нового runtime
+## Adding a runtime
 
-1. Добавьте декларативную карточку в `config/runtime-providers.json`.
-2. Реализуйте локальный адаптер с тем же `adapterId`.
-3. Добавьте preflight, который доказывает фактическую модель и не делает silent
-   fallback.
-4. Протестируйте start/stop, таймауты, redaction и нормализованные события.
-5. Только после этого отмечайте runtime как подключённый в live-интерфейсе.
+1. Add a declarative card to `config/runtime-providers.json`.
+2. Implement a local adapter with the same `adapterId`.
+3. Add preflight proof of the actual model with no silent fallback.
+4. Test start/stop, timeouts, redaction, and normalized events.
+5. Only then mark the runtime as connected in the live interface.
 
-Так пользователь может принести китайскую модель, локальный Ollama, облачный API
-или собственный CLI без форка визуального интерфейса — и при этом статический
-сайт не получает возможность исполнять произвольный код.
+This allows users to bring a Chinese model, local Ollama, cloud API, or custom CLI
+without forking the visual interface, while the static site remains unable to
+execute arbitrary code.

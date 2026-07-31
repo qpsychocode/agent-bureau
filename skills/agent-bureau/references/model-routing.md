@@ -1,9 +1,9 @@
-# Маршрутизация моделей
+# Model routing
 
-## Основное правило
+## Core rule
 
-Модель выбирается по риску и типу работы, а не по названию роли. Для каждого запуска
-сохранять оба набора полей:
+Choose a model by risk and type of work, not by role name. Store both sets of fields for
+every run:
 
 ```yaml
 requested_provider: cursor
@@ -17,41 +17,41 @@ actual_mode: fast
 attestation: canonical slug from model list + normalized init model
 ```
 
-Если runtime не сообщает фактическую модель, пометить её как `unverified`. Если
-пользователь закрепил конкретную модель, `unverified` или подмена являются блокером.
+If the runtime does not report the actual model, mark it as `unverified`. If the user pinned
+a specific model, an `unverified` result or substitution is blocking.
 
-## Профили Bureau
+## Bureau profiles
 
-| Профиль | Предпочтение | Reasoning | Применение |
+| Profile | Preference | Reasoning | Use |
 |---|---|---|---|
-| `orchestrator-primary` | Самая сильная доступная оркестраторская модель; сейчас предпочтительно GPT-5.6 Sol | high или выше | Декомпозиция, конфликтующие требования, интеграция |
-| `worker-economy` | Luna, если она доступна в текущем runtime | medium по умолчанию, high для сложного | Рутинные код, текст, маркетинг и подготовка |
-| `research-primary` | Cursor Grok 4.5 High Fast | high + fast | Внешний поиск и доказательный отчёт |
-| `verifier-primary` | Сильная независимая модель, не тот же сеанс исполнителя | high | Проверка значимых артефактов |
-| `image-primary` | Специализированный image generation tool | по инструменту | Новые raster-изображения |
+| `orchestrator-primary` | The strongest available orchestration model; currently prefer GPT-5.6 Sol | high or above | Decomposition, conflicting requirements, integration |
+| `worker-economy` | Luna, when available in the active runtime | medium by default, high for complex work | Routine coding, writing, marketing, and preparation |
+| `research-primary` | Cursor Grok 4.5 High Fast | high + fast | External search and evidence-based reports |
+| `verifier-primary` | A strong independent model, not the worker's session | high | Review of meaningful artifacts |
+| `image-primary` | Specialized image generation tool | tool-specific | New raster images |
 
-Указанная пользователем Luna является предпочтительным экономичным исполнителем, но
-её наличие и скидку нужно проверять в конкретном продукте и аккаунте. Не объявлять
-Luna использованной, если runtime её не предоставил. При отсутствии закреплённой
-модели оркестратор может выбрать доступную экономичную замену с effort не ниже medium
-и явно записать замену.
+Treat the user-specified Luna profile as the preferred economy worker, but verify its
+availability and discount in the specific product and account. Do not claim Luna was used
+unless the runtime provided it. When no model is pinned, the orchestrator may choose an
+available economy substitute with effort no lower than medium and explicitly record the
+substitution.
 
-## Уровень reasoning
+## Reasoning level
 
-- `medium` — минимальный уровень Bureau для обычных исполнительских задач.
-- `high` — исследования, верификация, сложные изменения и неоднозначные решения.
-- более высокий уровень — только когда риск оправдывает стоимость и задержку.
-- `low` не использовать по умолчанию.
+- `medium` — the Bureau minimum for ordinary worker tasks.
+- `high` — research, verification, complex changes, and ambiguous decisions.
+- Use a higher level only when risk justifies the cost and latency.
+- Do not use `low` by default.
 
-## Проверка доступности
+## Availability check
 
-1. Получить список моделей непосредственно из активного runtime.
-2. Найти запрошенный профиль по фактическим capability, а не только по похожему имени.
-3. После старта нормализовать `system/init.model` и сверить его с display name или
-   canonical slug выбранной записи.
-4. При несовпадении остановить обязательный профиль или явно согласовать замену.
-5. Не фиксировать временные акции и цены как постоянную часть маршрутизации.
+1. Obtain the model list directly from the active runtime.
+2. Match the requested profile by actual capabilities, not only a similar name.
+3. After launch, normalize `system/init.model` and compare it with the selected entry's
+   display name or canonical slug.
+4. On mismatch, stop a required profile or explicitly agree on a substitution.
+5. Do not encode temporary promotions or prices as a permanent routing rule.
 
-Текущий интерфейс субагентов Codex может предлагать другой набор моделей, чем Cursor.
-Оркестратор не может считать Cursor/Grok запущенным через обычный Codex spawn: для
-этого нужен отдельный Cursor CLI/SDK adapter.
+The current Codex subagent interface may offer a different model set than Cursor. The
+orchestrator cannot treat Cursor/Grok as launched through an ordinary Codex spawn; that
+requires a separate Cursor CLI/SDK adapter.

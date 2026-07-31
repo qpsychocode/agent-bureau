@@ -26,33 +26,33 @@ test("research run attests the model and writes a Markdown report", async () => 
     "--task-id",
     "profile-check",
     "--task",
-    "Проверь профиль Grok 4.5",
+    "Verify the Grok 4.5 profile",
   ]);
 
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, /Cursor Grok 4\.5 High Fast/);
   const report = await readFile(join(cwd, "docs", "research", "profile-check.md"), "utf8");
-  assert.match(report, /Запрошенный Cursor slug: cursor-grok-4\.5-high-fast/);
-  assert.match(report, /Фактическая модель: Cursor Grok 4\.5 High Fast/);
-  assert.match(report, /Профиль подтверждён/);
-  assert.doesNotMatch(report, /Проверяю источники/);
+  assert.match(report, /Requested Cursor slug: cursor-grok-4\.5-high-fast/);
+  assert.match(report, /Actual model: Cursor Grok 4\.5 High Fast/);
+  assert.match(report, /Profile confirmed/);
+  assert.doesNotMatch(report, /Checking sources/);
 });
 
 test("research run rejects a silent model substitution", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "bureau-research-"));
   const result = await run(
-    ["--cwd", cwd, "--task-id", "wrong-model", "--task", "Проверь профиль"],
+    ["--cwd", cwd, "--task-id", "wrong-model", "--task", "Verify the profile"],
     { FAKE_CURSOR_MODEL: "Auto" },
   );
 
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /вместо Cursor Grok 4\.5 Fast/);
+  assert.match(result.stderr, /instead of Cursor Grok 4\.5 Fast/);
 });
 
 test("research run stops after the hard tool-call budget", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "bureau-research-"));
   const result = await run(
-    ["--cwd", cwd, "--task-id", "tool-budget", "--task", "Проверь источники"],
+    ["--cwd", cwd, "--task-id", "tool-budget", "--task", "Verify the sources"],
     {
       BUREAU_RESEARCH_MAX_TOOL_CALLS: "4",
       FAKE_TOOL_CALLS: "5",
@@ -60,7 +60,7 @@ test("research run stops after the hard tool-call budget", async () => {
   );
 
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /остановлен после 4 tool calls/);
+  assert.match(result.stderr, /stopped after 4 tool calls/);
 });
 
 function run(args, extraEnv = {}) {

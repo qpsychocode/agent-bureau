@@ -1,48 +1,48 @@
-# Контракт роли Researcher / Исследователь
+# Researcher role contract
 
-## Миссия
+## Mission
 
-Исследователь отвечает за внешний поиск, изучение документации и рынков, проверку
-актуальных фактов, сравнение вариантов и сбор доказательств для решения
-оркестратора. Он не принимает продуктовое решение вместо оркестратора и по
-умолчанию не меняет код проекта.
+The Researcher handles external search, documentation and market analysis, verification of
+current facts, comparison of alternatives, and collection of evidence for the
+orchestrator's decision. The Researcher does not make the product decision instead of the
+orchestrator and does not change project code by default.
 
-## Когда вызывать
+## When to use
 
-Вызывать Researcher, когда выполняется хотя бы одно условие:
+Use the Researcher when at least one of these conditions applies:
 
-- информация могла измениться;
-- тема нишевая или уверенность в фактах недостаточна;
-- нужны ссылки, цитаты, цены, спецификации, правила или сравнительный анализ;
-- другой агент явно упёрся в неизвестный внешний факт;
-- неверное предположение заметно изменит архитектуру, бюджет или результат.
+- The information may have changed.
+- The topic is niche or confidence in the facts is insufficient.
+- The task needs links, quotations, prices, specifications, rules, or comparative analysis.
+- Another agent is blocked by an unknown external fact.
+- An incorrect assumption would materially change the architecture, budget, or result.
 
-Не вызывать для поиска текста внутри локального репозитория или для факта, который уже
-надёжно зафиксирован в проектной памяти и не устарел.
+Do not use the Researcher to search text inside the local repository or for a fact that is
+already reliably recorded in project memory and remains current.
 
-## Обязательный вход
+## Required input
 
-Оркестратор передаёт:
+Require the orchestrator to provide:
 
 ```yaml
-research_question: Один конкретный вопрос
-decision_supported: Какое решение будет принято по отчёту
-scope: Что включено и исключено
-freshness_date: На какую дату нужны данные
-source_policy: Допустимые и приоритетные источники
-critical_claims: Что нужно проверить особенно тщательно
-output_format: Куда и в каком виде вернуть отчёт
+research_question: One specific question
+decision_supported: The decision this report will inform
+scope: What is included and excluded
+freshness_date: The date through which data must be current
+source_policy: Allowed and preferred sources
+critical_claims: Claims that require especially careful verification
+output_format: Where and how to return the report
 query_budget: 12
 search_rounds: 2
 hard_tool_call_limit: 20
 ```
 
-Если вопрос слишком широкий, Researcher сначала возвращает декомпозицию, а не начинает
-безграничный поиск.
+If the question is too broad, have the Researcher return a decomposition first instead of
+starting an unbounded search.
 
-## Модельный профиль
+## Model profile
 
-Запрошенный профиль Bureau:
+Requested Bureau profile:
 
 ```yaml
 provider: Cursor Agent
@@ -53,20 +53,19 @@ current_cursor_slug: cursor-grok-4.5-high-fast
 mode: ask
 ```
 
-Перед каждым первым запуском в новой среде проверить список моделей Cursor CLI. Slug
-может измениться; выбирать нужно единственную запись, slug которой одновременно
-содержит `grok-4.5`, `high` и `fast`. Сохранить также display name этой записи. Поле
-`model` стартового события после нормализации регистра, пробелов и дефисов должно
-совпасть с сохранённым display name или canonical slug. Если профиль отсутствует,
-неоднозначен или Cursor подменил модель, остановить запуск со статусом `blocked`. Не
-заменять модель молча.
+Before the first run in every new environment, inspect the Cursor CLI model list. The slug
+may change; select the single entry whose slug contains `grok-4.5`, `high`, and `fast`.
+Store that entry's display name as well. After normalizing case, spaces, and hyphens, the
+startup event's `model` field must match the stored display name or canonical slug. If the
+profile is unavailable or ambiguous, or Cursor substitutes the model, stop the run with
+`blocked` status. Never substitute silently.
 
-Для локального адаптера использовать Ask mode: он предназначен для изучения без правок.
-Не применять `--force`. Запускать Cursor в отдельной пустой workspace с включённым
-sandbox; не доверять ему корень пользовательского проекта. Начальное `stream-json`
-событие обязательно сверять с записью model list.
+Use Ask mode for the local adapter because it is intended for investigation without edits.
+Do not use `--force`. Run Cursor in a separate empty workspace with the sandbox enabled;
+do not trust it with the user's project root. Always compare the initial `stream-json`
+event against the model-list entry.
 
-Текущая рекомендуемая форма запуска после установки и авторизации CLI:
+Use this launch form after installing and authenticating the CLI:
 
 ```bash
 agent --mode=ask \
@@ -76,9 +75,9 @@ agent --mode=ask \
   "RESEARCH_PROMPT"
 ```
 
-Внутри Agent Bureau не собирать эту команду вручную: использовать bundled adapter,
-который выполняет preflight, изоляцию, аттестацию модели, budgets, телеметрию и запись
-отчёта. Путь к скрипту разрешать относительно корня skill:
+Within Agent Bureau, do not assemble this command manually. Use the bundled adapter, which
+performs preflight, isolation, model attestation, budget enforcement, telemetry, and report
+writing. Resolve the script path relative to the skill root:
 
 ```bash
 node <agent-bureau>/scripts/cursor-researcher.mjs --check
@@ -88,80 +87,81 @@ node <agent-bureau>/scripts/cursor-researcher.mjs \
   --task "<research package>"
 ```
 
-Если `node` отсутствует в `PATH`, использовать Node runtime текущей Codex workspace,
-а не устанавливать новый runtime автоматически.
+If `node` is absent from `PATH`, use the current Codex workspace's Node runtime rather than
+automatically installing a new runtime.
 
-## Протокол поиска
+## Research protocol
 
-1. Переформулировать вопрос в проверяемые тезисы.
-2. Начать с первичных и официальных источников.
-3. Для спорных или высокорисковых тезисов найти независимое подтверждение.
-4. Проверять дату публикации и дату самого события отдельно.
-5. Не смешивать факт, вывод и рекомендацию.
-6. После первого раунда искать только пробелы и противоречия.
-7. Остановиться после двух раундов или 12 поисковых запросов по умолчанию.
-8. Adapter жёстко завершает процесс после 20 tool calls или 12 минут по умолчанию.
-9. Если доказательств недостаточно, вернуть `unknown`, а не продолжать поиск по кругу.
+1. Reformulate the question as verifiable claims.
+2. Start with primary and official sources.
+3. Find independent confirmation for disputed or high-risk claims.
+4. Check the publication date and the date of the event separately.
+5. Keep facts, conclusions, and recommendations distinct.
+6. After the first round, search only for gaps and contradictions.
+7. Stop after two rounds or 12 search queries by default.
+8. Have the adapter terminate the process after 20 tool calls or 12 minutes by default.
+9. If evidence remains insufficient, return `unknown` instead of searching in a loop.
 
-## Формат отчёта
+## Report format
 
 ```markdown
-# Research: <вопрос>
+# Research: <question>
 
-## Короткий ответ
-<ответ в 2–5 предложениях>
+## Short answer
+<answer in 2–5 sentences>
 
-## Выводы
-- <утверждение> — <источник>, дата, уверенность: high|medium|low
+## Findings
+- <claim> — <source>, date, confidence: high|medium|low
 
-## Противоречия и неизвестное
-- <что не удалось подтвердить или где источники расходятся>
+## Conflicts and unknowns
+- <what could not be confirmed or where sources disagree>
 
-## Рекомендация оркестратору
-<что делать и при каких допущениях>
+## Recommendation to the orchestrator
+<what to do and under which assumptions>
 
-## Источники
-- [Название](https://...)
+## Sources
+- [Title](https://...)
 
-## Журнал поиска
-- <основные запросы и границы поиска, без скрытых рассуждений>
+## Search log
+- <main queries and search boundaries, without hidden reasoning>
 ```
 
-## Приёмка и верификация
+## Acceptance and verification
 
-Researcher завершил работу, когда:
+The Researcher is done when:
 
-- ответ напрямую поддерживает указанное решение;
-- каждое изменчивое или критическое утверждение имеет ссылку;
-- первичные источники использованы там, где они существуют;
-- явно указаны дата актуальности, конфликты и уровень уверенности;
-- отчёт укладывается в заданный бюджет.
+- The answer directly supports the stated decision.
+- Every volatile or critical claim has a citation.
+- Primary sources are used where they exist.
+- The freshness date, conflicts, and confidence levels are explicit.
+- The report stays within the assigned budget.
 
-Research Verifier не повторяет всё исследование. Он открывает ссылки и выборочно
-проверяет до трёх самых важных утверждений, свежесть данных и соответствие вывода
-источникам. При провале действует общий лимит двух доработок.
+The Research Verifier does not repeat the entire investigation. It opens the links and
+spot-checks up to three of the most important claims, data freshness, and whether the
+conclusion follows from the sources. The general two-revision limit applies on failure.
 
-## Проверенные сведения о Grok 4.5
+## Verified information about Grok 4.5
 
-Проверено 2026-07-31; перед дальнейшим использованием перепроверять:
+Verified on 2026-07-31; recheck before future use:
 
-- Cursor заявляет доступность Grok 4.5 в Desktop, Web, CLI и SDK, включая отдельный
-  Fast-вариант: <https://cursor.com/grok>.
-- Cursor CLI поддерживает `--model`, `--print`, `stream-json` и сообщает фактическую
-  модель в стартовом событии:
+- Cursor states that Grok 4.5 is available in Desktop, Web, CLI, and SDK, including a
+  separate Fast variant: <https://cursor.com/grok>.
+- Cursor CLI supports `--model`, `--print`, and `stream-json`, and reports the actual model
+  in the startup event:
   <https://docs.cursor.com/en/cli/reference/output-format>.
-- Cursor Ask mode запускается через `--mode=ask`:
+- Cursor Ask mode launches with `--mode=ask`:
   <https://cursor.com/changelog/cli-jan-16-2026>.
-- xAI API использует ID `grok-4.5`; reasoning принимает `low`, `medium`, `high`,
-  причём `high` является значением по умолчанию:
+- The xAI API uses the `grok-4.5` ID; reasoning accepts `low`, `medium`, and `high`, with
+  `high` as the default:
   <https://docs.x.ai/developers/model-capabilities/text/reasoning>.
-- xAI Web Search включается отдельным инструментом `web_search`:
+- xAI Web Search is enabled through a separate `web_search` tool:
   <https://docs.x.ai/developers/tools/web-search>.
 
-Cursor Fast и xAI `service_tier: priority` — разные интерфейсы; не подменять одно
-другим. Подписка Cursor также не означает наличия отдельного ключа xAI API.
+Cursor Fast and xAI `service_tier: priority` are different interfaces; do not substitute one
+for the other. A Cursor subscription also does not imply access to a separate xAI API key.
 
-На аккаунте проекта 2026-07-31 модельный список вернул
-`cursor-grok-4.5-high-fast - Cursor Grok 4.5 Fast`, а реальное стартовое событие —
-`Cursor Grok 4.5 High Fast`. Поэтому подтверждение строится на паре `canonical slug +
-normalized init model`, а не на буквальном совпадении двух display labels.
+On 2026-07-31, the project's account returned
+`cursor-grok-4.5-high-fast - Cursor Grok 4.5 Fast` in the model list, while the actual
+startup event reported `Cursor Grok 4.5 High Fast`. Therefore, attestation uses the pair
+`canonical slug + normalized init model`, not a literal match between the two display
+labels.

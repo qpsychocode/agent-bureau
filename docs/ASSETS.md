@@ -1,64 +1,77 @@
-# Визуальные assets — Agent Bureau Office
+# Visual assets — Agent Bureau Office
 
-## Канонический референс
+## Canonical reference
 
-- `public/og.png` — исходный утверждённый арт и social image.
-- Соотношение: `1672 × 941`.
-- Не редактировать или заменять без нового явного решения пользователя.
+- `public/og.png` — the approved source art and social image.
+- Aspect ratio: `1672 × 941`.
+- The current approved version uses English title treatment.
+- Do not edit or replace it without a new explicit user decision.
 
-## Dynamic scene v2 — исторический промежуточный слой
+## Dynamic scene v2 — historical intermediate layer
 
-Создано 2026-07-31 встроенным ImageGen в ответ на требование отделить агентов от
-монолитной картинки и поддержать анимацию/расширение пула.
+Created on 2026-07-31 with the built-in ImageGen after the requirement to
+separate agents from the monolithic image and support animation and pool growth.
 
-### Пустой интерьер
+### Empty interior
 
-- Файл: `public/office-empty-v2.png`; заменён персональной планировкой v3.
-- Источник: `public/og.png` как edit target.
-- Задача prompt: удалить только пять роботов и их кресла; восстановить фон за
-  ними; сохранить пиксельный стиль, перспективу, мебель, свет, палитру,
-  композицию, заголовок «АГЕНТСКОЕ БЮРО» и подзаголовок «ЖИВОЙ ОФИС»; не добавлять
-  персонажей, текст, watermark и не менять framing.
+- File: `public/office-empty-v2.png`; superseded by the personalized v3 layout.
+- Source: `public/og.png` as the edit target.
+- Prompt intent: remove only the five robots and their chairs; reconstruct the
+  background behind them; preserve the pixel style, perspective, furniture,
+  lighting, palette, composition, English title, and subtitle; add no characters,
+  extra text, watermark, or framing change.
 
-### Ролевые спрайты
+### Role sprites
 
-- Финальные файлы: `public/agents/{orchestrator,researcher,coder,reviewer,designer,copywriter,marketing,image}.png`.
-- Производный atlas: `public/agents/atlas-v1.png`.
-- Источник стиля: `public/og.png`.
-- Задача prompt: восемь отдельных full-body pixel-art роботов в регулярном atlas
-  `4 × 2`: оркестратор с бирюзовым шарфом и указкой, researcher с лупой, coder с
-  ноутбуком, verifier с checklist, designer в фиолетовом берете, copywriter с
-  блокнотом, marketer с chart tablet, illustrator с drawing tablet. Единый
-  масштаб, 3/4 front view, без текста и watermark, на плоском chroma key фоне.
-- Chroma key удалён локальным helper ImageGen; atlas разделён воспроизводимым
-  `scripts/crop-agent-atlas.py`.
+- Final files:
+  `public/agents/{orchestrator,researcher,coder,reviewer,designer,copywriter,marketing,image}.png`.
+- Derived atlas: `public/agents/atlas-v1.png`.
+- Style source: `public/og.png`.
+- Prompt intent: eight separate full-body pixel-art robots in a regular `4 × 2`
+  atlas: orchestrator with a teal scarf and pointer, researcher with a magnifying
+  glass, developer with a laptop, verifier with a checklist, designer in a purple
+  beret, copywriter with a notebook, marketer with a chart tablet, and illustrator
+  with a drawing tablet. Use one scale, a 3/4 front view, no text or watermark,
+  and a flat chroma-key background.
+- The chroma key was removed with the local ImageGen helper; the atlas was split
+  reproducibly with `scripts/crop-agent-atlas.py`.
+- `public/agents/designer.png` received an alpha-channel repair in the purple
+  beret so office pixels no longer show through it.
 
 ## Render contract
 
-- Background содержит только окружение.
-- Каждый агент рендерится отдельной DOM-кнопкой и использует role sprite.
-- Незнакомая роль получает детерминированный fallback sprite по `agentId + role`.
-- Цвет роли, статус, координаты и анимация задаются кодом, а не вшиваются в фон.
+- The background contains environment only.
+- Each agent is rendered as a separate DOM button using its role sprite.
+- An unknown role receives a deterministic fallback sprite from `agentId + role`.
+- Role color, status, coordinates, and animation are code-driven rather than
+  baked into the background.
+- Hover and keyboard focus reveal an upward-looking eye treatment. The effect is
+  an independent layer/frame; it does not move the entire character.
+- Pointer hover does not draw a rectangular hotspot over the art. Keyboard focus
+  remains visible through a compact label/accent treatment.
 
 ## Custom departments v3
 
-- Финальный рабочий файл: `public/office-departments-v3.png`.
-- Источники: `public/office-empty-v2.png` как edit target и `public/og.png` как
-  style/character reference.
-- Задача prompt: сохранить заголовок, ночной город, свет, палитру, перспективу и
-  pixel scale, но создать ровно восемь пустых кабинетов. Верх: teal Researcher
-  archive, увеличенный Orchestrator command room, cyan/coral Verifier QA room.
-  Низ: green Coder, purple Designer, amber Copywriter, pink Marketing, orange
-  Illustrator. Каждому — собственные границы, стол, мебель и ролевой реквизит;
-  без персонажей, лишних комнат, подписей и watermark.
-- Runtime mapping: `STAGE_SLOTS` в `app/page.tsx`; дополнительные live-роли
-  остаются в цифровом аннексе, а не размещаются поверх чужой мебели.
+- Final working file: `public/office-departments-v3.png`.
+- Sources: `public/office-empty-v2.png` as the edit target and `public/og.png` as
+  the style and character reference.
+- Prompt intent: preserve the English title, night city, lighting, palette,
+  perspective, and pixel scale while creating exactly eight empty offices. Top:
+  teal Researcher archive, enlarged Orchestrator command room, cyan/coral Verifier
+  QA room. Bottom: green Developer, purple Designer, amber Copywriter, pink
+  Marketing, and orange Illustrator. Give each one distinct boundaries, a desk,
+  furniture, and role-specific props; add no characters, extra rooms, labels, or
+  watermark.
+- Runtime mapping: `STAGE_SLOTS` in `app/page.tsx`; additional live roles remain
+  in the digital annex rather than being placed over another role's furniture.
 
-## Переиспользуемые кабинеты конструктора
+## Reusable builder offices
 
-- Файлы: `public/offices/{orchestrator,researcher,reviewer,coder,designer,copywriter,marketing,image}.webp`.
-- Это восемь воспроизводимых crop-вариантов из утверждённой планировки
-  `public/office-departments-v3.png`, а не независимо стилизованные дубликаты.
-- Координаты и экспорт описаны в `scripts/crop-office-templates.py`.
-- Конструктор накладывает выбранный PNG-аватар отдельным DOM-слоем; поэтому один
-  кабинет можно назначать нескольким новым агентам, не генерируя арт заново.
+- Files:
+  `public/offices/{orchestrator,researcher,reviewer,coder,designer,copywriter,marketing,image}.webp`.
+- These are eight reproducible crops from the approved
+  `public/office-departments-v3.png` layout, not independently styled duplicates.
+- Coordinates and export logic are documented in
+  `scripts/crop-office-templates.py`.
+- The builder overlays the selected PNG avatar as a separate DOM layer, so one
+  office can be assigned to multiple new agents without regenerating art.
