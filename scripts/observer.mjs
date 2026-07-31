@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const HOST = "127.0.0.1";
 const PORT = positiveInteger(process.env.BUREAU_OBSERVER_PORT, 7331);
 const MAX_BODY_BYTES = 32 * 1024;
-const DEFAULT_STALE_AFTER_MS = 45_000;
+const DEFAULT_STALE_AFTER_MS = 180_000;
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_DIR = dirname(SCRIPT_DIR);
 const DATA_DIR = process.env.BUREAU_OBSERVER_DATA_DIR
@@ -20,6 +20,13 @@ const STALE_AFTER_MS = positiveInteger(
   process.env.BUREAU_STALE_AFTER_MS,
   DEFAULT_STALE_AFTER_MS,
 );
+const READ_ONLY_WEB_ORIGINS = new Set([
+  "https://agent-bureau.vercel.app",
+  ...(process.env.BUREAU_READ_ONLY_ORIGINS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+]);
 
 const STATUSES = new Set([
   "idle",
@@ -85,6 +92,19 @@ const EVENT_ASSIGNMENT_STATUS = new Map([
   ["agent.stopped", "done"],
 ]);
 
+const TOOL_CLEARING_EVENTS = new Set([
+  "tool.finished",
+  "artifact.submitted",
+  "review.started",
+  "review.approved",
+  "review.revision_requested",
+  "agent.blocked",
+  "task.blocked",
+  "task.completed",
+  "agent.done",
+  "agent.stopped",
+]);
+
 const ALLOWED_EFFORTS = new Set([
   "low",
   "medium",
@@ -132,20 +152,31 @@ await initializeStorage();
 
 const server = createServer(async (request, response) => {
   const origin = request.headers.origin;
-  const corsOrigin = allowedLocalOrigin(origin);
+  const corsAccess = allowedBrowserOrigin(origin);
 
-  if (origin && !corsOrigin) {
+  if (origin && !corsAccess) {
     sendJson(response, 403, { error: "origin_not_allowed" });
     return;
   }
 
-  if (corsOrigin) {
-    response.setHeader("Access-Control-Allow-Origin", corsOrigin);
+  if (corsAccess) {
+    response.setHeader("Access-Control-Allow-Origin", corsAccess.origin);
     response.setHeader("Vary", "Origin");
+    if (request.headers["access-control-request-private-network"] === "true") {
+      response.setHeader("Access-Control-Allow-Private-Network", "true");
+    }
+  }
+
+  if (corsAccess?.readOnly && request.method !== "GET" && request.method !== "OPTIONS") {
+    sendJson(response, 403, { error: "origin_is_read_only" });
+    return;
   }
 
   if (request.method === "OPTIONS") {
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response.setHeader(
+      "Access-Control-Allow-Methods",
+      corsAccess?.readOnly ? "GET, OPTIONS" : "GET, POST, OPTIONS",
+    );
     response.setHeader("Access-Control-Allow-Headers", "Content-Type");
     response.setHeader("Access-Control-Max-Age", "600");
     response.writeHead(204);
@@ -314,6 +345,8 @@ function sanitizePersistedAgent(value) {
     model: sanitizeIdentifier(value.model, 80),
     effort: ALLOWED_EFFORTS.has(value.effort) ? value.effort : undefined,
     phase: sanitizeDisplayText(value.phase, 80),
+    activityEvent: EVENT_TYPES.has(value.activityEvent) ? value.activityEvent : undefined,
+    activeTool: sanitizeIdentifier(value.activeTool, 80),
     summary: sanitizeDisplayText(value.summary, 320),
     startedAt: sanitizeTimestamp(value.startedAt),
     completedAt: sanitizeTimestamp(value.completedAt),
@@ -421,7 +454,12 @@ function reduceEvent(currentState, event) {
   let project = event.project || currentState.project;
 
   if (event.type === "run.started") {
-    runId = event.runId || randomUUID();
+    const nextRunId = event.runId || randomUUID();
+    if (currentState.runId !== nextRunId) {
+      agents = [];
+      assignments = [];
+    }
+    runId = nextRunId;
   }
 
   if (event.type === "run.finished") {
@@ -463,6 +501,14 @@ function reduceEvent(currentState, event) {
       : undefined;
 
     const review = reduceReview(previous.review, event);
+    const activityEvent = event.type === "heartbeat"
+      ? previous.activityEvent
+      : event.type;
+    const activeTool = event.type === "tool.started"
+      ? toolNameFromPhase(event.phase)
+      : TOOL_CLEARING_EVENTS.has(event.type)
+        ? undefined
+        : previous.activeTool;
     const nextAgent = compactObject({
       ...previous,
       id: event.agentId,
@@ -473,7 +519,11 @@ function reduceEvent(currentState, event) {
       task: event.task || previous.task,
       model: event.model || previous.model,
       effort: event.effort || previous.effort,
-      phase: event.phase || previous.phase,
+      phase: event.type === "tool.started" || event.type === "tool.finished"
+        ? previous.phase
+        : event.phase || previous.phase,
+      activityEvent,
+      activeTool,
       summary: event.summary || previous.summary,
       progress: event.progress ?? previous.progress,
       startedAt: enteringActiveWork
@@ -498,6 +548,11 @@ function reduceEvent(currentState, event) {
     agents,
     assignments,
   };
+}
+
+function toolNameFromPhase(phase) {
+  if (typeof phase !== "string") return undefined;
+  return sanitizeIdentifier(phase.replace(/^tool:/i, ""), 80);
 }
 
 function reduceAssignments(currentAssignments, event) {
@@ -711,7 +766,7 @@ function sendJson(response, status, value) {
   response.end(body);
 }
 
-function allowedLocalOrigin(origin) {
+function allowedBrowserOrigin(origin) {
   if (typeof origin !== "string") return null;
   try {
     const url = new URL(origin);
@@ -719,9 +774,11 @@ function allowedLocalOrigin(origin) {
       || url.hostname === "127.0.0.1"
       || url.hostname === "[::1]";
     if (!localHost || (url.protocol !== "http:" && url.protocol !== "https:")) {
-      return null;
+      return READ_ONLY_WEB_ORIGINS.has(origin) && url.protocol === "https:"
+        ? { origin, readOnly: true }
+        : null;
     }
-    return origin;
+    return { origin, readOnly: false };
   } catch {
     return null;
   }

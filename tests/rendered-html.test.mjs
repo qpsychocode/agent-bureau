@@ -41,7 +41,7 @@ test("server-renders the Agent Bureau office", async () => {
   assert.match(html, /ORCHESTRATOR ASSIGNMENTS/);
   assert.match(html, /AGENT ROSTER/);
   assert.match(html, /Add agent/);
-  assert.match(html, />TEAM</);
+  assert.match(html, /TEAM(?:<!-- -->)? · (?:<!-- -->)?SIMULATED/);
   for (const agent of [
     "Orchestrator",
     "Developer",
@@ -74,6 +74,10 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(page, /"design",\s*"copy",\s*"marketing",\s*"image"/);
   assert.doesNotMatch(page, /HotDeskAgent|HOT_DESK_SPOTS/);
   assert.match(page, /TaskAssignment|task-packet/);
+  assert.match(page, /ActivityKind|activityFor/);
+  assert.match(page, /activity-effect|route-signal/);
+  assert.match(page, /mobile-activity/);
+  assert.match(page, /TEAM · \{usingDemo \? "SIMULATED"/);
   assert.match(page, /mergeLiveWithRoster/);
   assert.match(page, /presence:\s*"standby"/);
   assert.match(page, /agent\.presence !== "standby"/);
@@ -117,10 +121,16 @@ test("removes starter-only preview code and metadata", async () => {
   assert.doesNotMatch(page, /apiKey\s*[:=]/i);
   assert.doesNotMatch(page, /PixelAgent|robot-head|OfficeRoom/);
   assert.match(css, /@keyframes agent-working/);
+  assert.match(css, /@keyframes activity-pixel/);
+  assert.match(css, /\.route-base/);
+  assert.match(css, /\.route-signal/);
+  assert.match(css, /\.activity-using-tool/);
+  assert.match(css, /\.mobile-activity/);
+  assert.match(css, /\.task-packet-done,[\s\S]*?\.task-packet-blocked,[\s\S]*?\.task-packet-stale \{ animation: none; \}/);
   assert.match(css, /@keyframes agent-arrive/);
   assert.match(css, /@keyframes team-popover-enter/);
   assert.match(css, /\.gaze-up-layer/);
-  assert.match(css, /\.agent-label strong \{[^}]*font-size: 12px/);
+  assert.match(css, /\.agent-label-head strong \{[^}]*font-size: 12px/);
   assert.match(css, /\.team-avatar \{[^}]*width: 58px; height: 66px/);
   assert.match(css, /\.identity-fields \{[^}]*grid-template-columns: 1fr 1fr/);
   assert.match(css, /\.builder-close span::before/);

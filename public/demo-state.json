@@ -14,6 +14,8 @@
       "task": "Dispatch tasks across the agent team",
       "model": "gpt-5.6-sol",
       "effort": "high",
+      "phase": "planning",
+      "activityEvent": "task.assigned",
       "summary": "Builds the plan and selects the right specialists",
       "stale": false,
       "elapsedSeconds": 92
@@ -27,6 +29,9 @@
       "task": "Connect the live local collector",
       "model": "gpt-5.6-terra",
       "effort": "medium",
+      "phase": "implementation",
+      "activityEvent": "tool.started",
+      "activeTool": "apply-patch",
       "summary": "Implements the event API and state snapshot",
       "stale": false,
       "elapsedSeconds": 248
@@ -40,6 +45,8 @@
       "task": "Build eight dedicated role offices",
       "model": "gpt-5.6-terra",
       "effort": "medium",
+      "phase": "interface-design",
+      "activityEvent": "task.started",
       "summary": "Refines the rooms and status animations",
       "stale": false,
       "elapsedSeconds": 174
@@ -54,6 +61,7 @@
       "model": "cursor-grok-4.5-high-fast",
       "effort": "high",
       "phase": "research",
+      "activityEvent": "task.started",
       "summary": "Cross-checks official Cursor and xAI sources",
       "stale": false,
       "elapsedSeconds": 138
@@ -67,6 +75,8 @@
       "task": "Verify the interface and telemetry",
       "model": "gpt-5.6-sol",
       "effort": "high",
+      "phase": "acceptance-review",
+      "activityEvent": "review.started",
       "summary": "Checks the result against acceptance criteria",
       "review": {
         "status": "reviewing",
@@ -84,6 +94,7 @@
       "task": "Waiting for a new assignment",
       "model": "luna",
       "effort": "medium",
+      "activityEvent": "agent.idle",
       "summary": "Available",
       "stale": false,
       "elapsedSeconds": 0
@@ -96,6 +107,7 @@
       "task": "Waiting for a new assignment",
       "model": "luna",
       "effort": "medium",
+      "activityEvent": "agent.idle",
       "summary": "Available",
       "stale": false,
       "elapsedSeconds": 0
@@ -108,6 +120,7 @@
       "task": "Waiting for a new assignment",
       "model": "luna",
       "effort": "medium",
+      "activityEvent": "agent.idle",
       "summary": "Available",
       "stale": false,
       "elapsedSeconds": 0

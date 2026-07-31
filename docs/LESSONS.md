@@ -136,3 +136,22 @@ symptom, an adopted rule, and a verification method.
   agent labels; create/parse a named profile; inspect asset alpha instead of
   assuming transparency is only a visual illusion.
 - **Related decision:** ADR-018.
+
+## LESSON-009 — Motion without fresh lifecycle events is decoration
+
+- **Date:** 2026-07-31
+- **Symptom:** characters moved, but the office could not answer which agent was
+  doing which task; stopped tools could remain visually active, old runs crowded
+  out the current shift, and the public page always showed demo data.
+- **Cause:** one generic animation was driven by coarse status while the event
+  bridge silently depended on a manually started collector. Demo fields also
+  leaked into standby roster entries during live merge.
+- **Rule:** derive motion from an explicit, persisted activity event and keep the
+  operational path self-starting and best-effort. Clear transient tool state,
+  reset the current snapshot on a new run, and never let fallback data masquerade
+  as observed work.
+- **Before delivery:** start a fresh run, publish explicit assignments, confirm
+  that active routes and labels match the snapshot, confirm production-origin
+  reads and write rejection, test mobile and reduced motion, and preserve an
+  honest demo fallback.
+- **Related decision:** ADR-019.

@@ -1,5 +1,15 @@
+import { spawn } from "node:child_process";
+import { closeSync, existsSync, mkdirSync, openSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 const OBSERVER_ENDPOINT = "http://127.0.0.1:7331/api/events";
+const OBSERVER_HEALTH_ENDPOINT = "http://127.0.0.1:7331/api/health";
 const MAX_HOOK_PAYLOAD_BYTES = 256 * 1024;
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const WORKSPACE_DIR = dirname(SCRIPT_DIR);
+const OBSERVER_SCRIPT = join(SCRIPT_DIR, "observer.mjs");
+const BUREAU_DATA_DIR = join(WORKSPACE_DIR, ".bureau");
 
 let shouldContinue = false;
 
@@ -168,14 +178,68 @@ function isStopHook(payload) {
 }
 
 async function publish(event) {
+  try {
+    await postEvent(event, 280);
+    return;
+  } catch {
+    const started = await ensureObserver();
+    if (!started) throw new Error("observer_unavailable");
+  }
+
+  await postEvent(event, 420);
+}
+
+async function postEvent(event, timeoutMs) {
   const response = await fetch(OBSERVER_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(event),
-    signal: AbortSignal.timeout(1_500),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) throw new Error(`observer_http_${response.status}`);
+}
+
+async function ensureObserver() {
+  if (await observerIsHealthy(140)) return true;
+  if (!existsSync(OBSERVER_SCRIPT)) return false;
+
+  mkdirSync(BUREAU_DATA_DIR, { recursive: true, mode: 0o700 });
+  const logPath = join(BUREAU_DATA_DIR, "observer.log");
+  const logFd = openSync(logPath, "a", 0o600);
+  try {
+    const child = spawn(process.execPath, [OBSERVER_SCRIPT], {
+      cwd: WORKSPACE_DIR,
+      detached: true,
+      stdio: ["ignore", logFd, logFd],
+      env: process.env,
+    });
+    child.unref();
+  } finally {
+    closeSync(logFd);
+  }
+
+  for (let attempt = 0; attempt < 7; attempt += 1) {
+    await wait(70);
+    if (await observerIsHealthy(110)) return true;
+  }
+  return false;
+}
+
+async function observerIsHealthy(timeoutMs) {
+  try {
+    const response = await fetch(OBSERVER_HEALTH_ENDPOINT, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function firstText(...values) {

@@ -74,9 +74,32 @@ test("collector tracks, sanitizes, and bounds real task assignments", async (con
     type: "task.started",
     assignmentId: "assignment-alpha",
     agentId: "coder-1",
+    phase: "implementation",
   });
   state = await getState(endpoint);
   assert.equal(state.assignments[0].status, "working");
+
+  await postEvent(endpoint, {
+    type: "tool.started",
+    assignmentId: "assignment-alpha",
+    agentId: "coder-1",
+    phase: "tool:apply-patch",
+  });
+  state = await getState(endpoint);
+  assert.equal(state.agents.find((agent) => agent.id === "coder-1").activeTool, "apply-patch");
+  assert.equal(state.agents.find((agent) => agent.id === "coder-1").activityEvent, "tool.started");
+  assert.equal(state.agents.find((agent) => agent.id === "coder-1").phase, "implementation");
+
+  await postEvent(endpoint, {
+    type: "tool.finished",
+    assignmentId: "assignment-alpha",
+    agentId: "coder-1",
+    phase: "tool:apply-patch",
+  });
+  state = await getState(endpoint);
+  assert.equal(state.agents.find((agent) => agent.id === "coder-1").activeTool, undefined);
+  assert.equal(state.agents.find((agent) => agent.id === "coder-1").activityEvent, "tool.finished");
+  assert.equal(state.agents.find((agent) => agent.id === "coder-1").phase, "implementation");
 
   await postEvent(endpoint, {
     type: "review.started",
@@ -120,6 +143,50 @@ test("collector tracks, sanitizes, and bounds real task assignments", async (con
   assert.equal(persisted.assignments.length, 50);
   const eventLog = await readFile(join(dataDir, "events.jsonl"), "utf8");
   assert.doesNotMatch(eventLog, /super-secret-token|must never be retained/);
+
+  const publicRead = await fetch(`${endpoint}/api/state`, {
+    headers: { Origin: "https://agent-bureau.vercel.app" },
+  });
+  assert.equal(publicRead.status, 200);
+  assert.equal(
+    publicRead.headers.get("access-control-allow-origin"),
+    "https://agent-bureau.vercel.app",
+  );
+
+  const publicWrite = await fetch(`${endpoint}/api/events`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: "https://agent-bureau.vercel.app",
+    },
+    body: JSON.stringify({ type: "agent.done", agentId: "forbidden" }),
+  });
+  assert.equal(publicWrite.status, 403);
+
+  const privateNetworkPreflight = await fetch(`${endpoint}/api/state`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://agent-bureau.vercel.app",
+      "Access-Control-Request-Private-Network": "true",
+    },
+  });
+  assert.equal(privateNetworkPreflight.status, 204);
+  assert.equal(
+    privateNetworkPreflight.headers.get("access-control-allow-private-network"),
+    "true",
+  );
+  assert.equal(privateNetworkPreflight.headers.get("access-control-allow-methods"), "GET, OPTIONS");
+
+  await postEvent(endpoint, {
+    type: "run.started",
+    runId: "fresh-run",
+    agentId: "orchestrator",
+    role: "orchestrator",
+  });
+  state = await getState(endpoint);
+  assert.equal(state.runId, "fresh-run");
+  assert.equal(state.assignments.length, 0);
+  assert.deepEqual(state.agents.map((agent) => agent.id), ["orchestrator"]);
 });
 
 async function reservePort() {

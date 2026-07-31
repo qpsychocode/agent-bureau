@@ -325,3 +325,35 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
   mobile sizes; incomplete submission produces a visible error; name and role
   survive profile parsing; the reasoning control is a select; both icon files
   are part of the production build.
+
+## ADR-019 — Observable lifecycle states and a local read-only web bridge
+
+- **Status:** accepted
+- **Date:** 2026-07-31
+- **Decision:** the scene derives a specific activity from sanitized lifecycle
+  events, not from a generic busy flag. Planning, research, coding, design,
+  tool use, waiting for review, review, revision, blocked, completed, idle, and
+  stale states have distinct labels and motion. Only assignments with current
+  events animate their route from the Orchestrator.
+- **Truth boundary:** the label shows the latest explicit assignment title,
+  phase, safe detail, and progress. A standby roster member cannot inherit demo
+  activity. Tool completion clears `activeTool`; a new run clears the previous
+  shift from the current snapshot while preserving the append-only event log.
+- **Publication:** `scripts/bureauctl.mjs` emits allowlisted lifecycle fields and
+  the Agent Bureau skill requires meaningful transition events. Codex hooks
+  best-effort start the loopback observer when it is missing. Telemetry failure
+  never blocks the real task.
+- **Public view:** the production Vercel page continues to fetch
+  `http://127.0.0.1:7331` from the user's browser. The observer permits exact
+  configured HTTPS origins to read state, rejects browser-origin writes, and
+  answers Private Network Access preflight. No telemetry is uploaded to Vercel.
+- **Privacy:** prompts, transcripts, hidden reasoning, tool arguments, paths,
+  diffs, credentials, and file contents remain forbidden. Task titles must be
+  concise safe summaries.
+- **Fallback:** when the local collector or browser permission is unavailable,
+  the public page honestly displays the simulated shift. Viewing while the
+  computer is offline requires a separately approved durable cloud mirror.
+- **Verification:** reducer tests cover tool start/finish and run reset; CORS
+  tests cover production read, write rejection, and private-network preflight;
+  browser QA confirms live labels, active routes, distinct animation names,
+  the mobile activity strip, and reduced-motion support.

@@ -11,7 +11,8 @@ who is blocked, and which result has already been accepted.
 - Web UI: `http://localhost:3000`
 - Local collector: `http://127.0.0.1:7331`
 - Public source: `https://github.com/qpsychocode/agent-bureau`
-- Public web: `https://agent-bureau.vercel.app` (Vercel demo)
+- Public web: `https://agent-bureau.vercel.app` (live through the local read-only
+  browser bridge; demo fallback while the collector is offline)
 - Combined start: `start-office.command` or `npm run office`
 - Canonical style reference and English social image: `public/og.png`
   (`1672 × 941`)
@@ -23,6 +24,9 @@ who is blocked, and which result has already been accepted.
   `ADD AGENT` action; the selected assignment opens in an overlay drawer
 - Scene interaction: DOM/CSS agent hotspots, visual hierarchy, task routes, and
   clickable assignment packets
+- Activity language: distinct planning, research, coding, design, tool-use,
+  waiting-review, review, revision, blocked, completed, idle, and stale states;
+  only assigned routes animate, and mobile has a readable live-activity strip
 - Character response: hover and keyboard focus shift the characters' gaze upward
   without drawing the old rectangular hotspot; keyboard focus remains visible
 - Designer sprite: the purple beret was regenerated with an opaque interior;
@@ -51,7 +55,9 @@ who is blocked, and which result has already been accepted.
 - History: `.bureau/events.jsonl`
 - Snapshot: `.bureau/state.json`
 - Codex bridge: `.codex/config.toml` → `.codex/hooks/bureau-hook.sh` →
-  `scripts/codex-hook.mjs`
+  `scripts/codex-hook.mjs`; a missing collector is started best-effort
+- Manual lifecycle bridge: `scripts/bureauctl.mjs` →
+  `skills/agent-bureau/scripts/bureau-telemetry.mjs`
 - Skill source: `skills/agent-bureau`
 - Cursor Researcher adapter: `skills/agent-bureau/scripts/cursor-researcher.mjs`
 - Researcher profile: `Cursor Grok 4.5 High Fast`, reasoning `high`, Ask mode
@@ -107,13 +113,13 @@ disk.
 
 ## Next logical steps
 
-1. Connect native `bureauctl` events with explicit assignments, exact roles, a
-   task graph, and verifier verdicts.
-2. Implement trusted local runtime adapters against the open contract: exact
+1. Implement trusted local runtime adapters against the open contract: exact
    model preflight, start/stop, and normalized telemetry.
-3. Add heartbeat events for long-running agents.
-4. Package the verified web UI in Tauri with autostart and a menu-bar icon.
-5. If there is a real need, add an authenticated outbound-only, cloud read-only
+2. Add heartbeat events for agents that have no tool/lifecycle transition for
+   longer than the stale window.
+3. Package the verified web UI in Tauri with autostart and a menu-bar icon.
+4. If there is a real need for viewing while this computer is offline, add an
+   authenticated outbound-only, cloud read-only
    mirror instead of a demo feed on the public site.
 
 ## Known limitations
@@ -126,8 +132,11 @@ disk.
   are tied to the `1672 × 941` aspect ratio. On narrow screens the full scene is
   scaled down, while overflow remains available in the digital annex and Team
   popover.
-- The public Vercel deployment cannot read the user's `127.0.0.1` and always
-  falls back to the safe demo snapshot.
+- The public Vercel deployment reads `127.0.0.1` only from the user's browser,
+  with exact-origin read-only CORS and Private Network Access preflight support.
+  Browser local-network policy may still require the user to grant access.
+- The public page cannot show live work when this computer or observer is off;
+  that requires a separate cloud mirror and explicit privacy/cost consent.
 - `CREATE AGENT` creates a local configuration and visual entity but does not
   start an LLM: the static page has no authorized runtime bridge and deliberately
   makes no claim otherwise.
@@ -136,7 +145,7 @@ disk.
   adapter; silent model substitution is forbidden.
 - The browser stores only an environment-variable name. API keys, access tokens,
   and launch commands are not part of the JSON profile or catalog.
-- `stale` appears after 45 seconds without a new event or heartbeat.
+- `stale` appears after 180 seconds without a new event or heartbeat.
 - A regular Codex spawn cannot grant itself an external Cursor/Grok profile. The
   Researcher starts through a separate CLI adapter, and its model is confirmed
   only after checking the initial `stream-json` event.

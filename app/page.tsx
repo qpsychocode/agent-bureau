@@ -48,6 +48,29 @@ type AssignmentStatus =
 
 type Presence = "demo" | "live" | "standby" | "custom";
 
+type ActivityKind =
+  | "idle"
+  | "planning"
+  | "researching"
+  | "coding"
+  | "designing"
+  | "working"
+  | "using-tool"
+  | "waiting-review"
+  | "reviewing"
+  | "revising"
+  | "blocked"
+  | "done"
+  | "stale";
+
+type ActivityView = {
+  kind: ActivityKind;
+  label: string;
+  detail: string;
+  glyph: string;
+  color: string;
+};
+
 type Review = {
   status?: string;
   verdict?: string;
@@ -67,6 +90,8 @@ type Agent = {
   model?: string;
   effort?: string;
   phase?: string;
+  activityEvent?: string;
+  activeTool?: string;
   summary?: string;
   progress?: number;
   startedAt?: string;
@@ -150,6 +175,14 @@ const STATUS_META: Record<AgentStatus, { label: string; short: string }> = {
   done: { label: "Done", short: "done" },
 };
 
+const ACTIVE_AGENT_STATUSES = new Set<AgentStatus>([
+  "planning",
+  "working",
+  "reviewing",
+  "revision",
+  "blocked",
+]);
+
 const ASSIGNMENT_META: Record<AssignmentStatus, string> = {
   assigned: "Assigned",
   working: "In progress",
@@ -157,6 +190,22 @@ const ASSIGNMENT_META: Record<AssignmentStatus, string> = {
   revision: "Needs revision",
   blocked: "Blocked",
   done: "Completed",
+};
+
+const ACTIVITY_META: Record<ActivityKind, Omit<ActivityView, "kind">> = {
+  idle: { label: "READY", detail: "Awaiting assignment", glyph: "··", color: "#8f8994" },
+  planning: { label: "PLANNING", detail: "Breaking down the task", glyph: "…", color: "#efb15d" },
+  researching: { label: "RESEARCHING", detail: "Checking sources", glyph: "SRC", color: "#68d2c8" },
+  coding: { label: "CODING", detail: "Implementing and testing", glyph: ">_", color: "#6fe0ae" },
+  designing: { label: "DESIGNING", detail: "Refining the interface", glyph: "◆", color: "#b59cff" },
+  working: { label: "WORKING", detail: "Executing the assignment", glyph: "RUN", color: "#b5bbca" },
+  "using-tool": { label: "USING TOOL", detail: "Running a safe tool action", glyph: "TOOL", color: "#9ed8ff" },
+  "waiting-review": { label: "WAITING REVIEW", detail: "Artifact submitted", glyph: "SEND", color: "#73d8dc" },
+  reviewing: { label: "REVIEWING", detail: "Checking acceptance criteria", glyph: "QA", color: "#72cde9" },
+  revising: { label: "REVISING", detail: "Applying verifier feedback", glyph: "↺", color: "#ef9f63" },
+  blocked: { label: "BLOCKED", detail: "Needs attention", glyph: "!", color: "#ee696f" },
+  done: { label: "DONE", detail: "Assignment completed", glyph: "OK", color: "#73d6a9" },
+  stale: { label: "NO SIGNAL", detail: "Waiting for a fresh event", glyph: "--", color: "#7b7680" },
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -266,6 +315,16 @@ const WORKER_SLOTS: WorkerSlot[] = [
   "marketing",
   "image",
 ];
+
+const ROUTE_PATHS: Record<WorkerSlot, string> = {
+  research: "M 59 43 V 51 H 34 V 46",
+  review: "M 59 43 V 51 H 88 V 46",
+  code: "M 59 43 V 53 H 10 V 59",
+  design: "M 59 43 V 53 H 29 V 59",
+  copy: "M 59 43 V 59",
+  marketing: "M 59 43 V 53 H 69 V 59",
+  image: "M 59 43 V 53 H 90 V 59",
+};
 
 function isAgentStatus(value: unknown): value is AgentStatus {
   return typeof value === "string" && value in STATUS_META;
@@ -449,6 +508,8 @@ function mergeLiveWithRoster(live: BureauState): BureauState {
       task: "Awaiting a live assignment",
       summary: "Core bureau roster; no live event yet",
       phase: undefined,
+      activityEvent: undefined,
+      activeTool: undefined,
       progress: 0,
       startedAt: undefined,
       completedAt: undefined,
@@ -513,6 +574,42 @@ function progressFor(agent: Agent) {
   ];
 }
 
+function activityFor(agent: Agent, assignment?: RoutedAssignment): ActivityView {
+  let kind: ActivityKind = "idle";
+  if (agent.presence === "standby") kind = "idle";
+  else if (agent.stale) kind = "stale";
+  else if (agent.status === "blocked" || assignment?.status === "blocked") kind = "blocked";
+  else if (agent.status === "done" || assignment?.status === "done") kind = "done";
+  else if (agent.status === "revision" || assignment?.status === "revision") kind = "revising";
+  else if (agent.activeTool) kind = "using-tool";
+  else if (
+    agent.status === "reviewing" &&
+    (agent.activityEvent === "artifact.submitted" || roleKey(agent.role) !== "reviewer")
+  ) kind = "waiting-review";
+  else if (agent.status === "reviewing" || assignment?.status === "reviewing") kind = "reviewing";
+  else if (agent.status === "planning" || assignment?.status === "assigned") kind = "planning";
+  else if (agent.status === "working") {
+    const phase = agent.phase?.toLowerCase() ?? "";
+    const role = roleKey(agent.role);
+    if (role === "researcher" || phase.includes("research")) kind = "researching";
+    else if (role === "coder" || /code|implement|test|build/.test(phase)) kind = "coding";
+    else if (role === "designer" || /design|ui|ux|visual/.test(phase)) kind = "designing";
+    else kind = "working";
+  }
+
+  const base = ACTIVITY_META[kind];
+  let detail = base.detail;
+  if (kind === "using-tool" && agent.activeTool) {
+    detail = agent.activeTool.replace(/[-_.]+/g, " ");
+  } else if (kind === "revising" && agent.review?.attempts) {
+    detail = `Revision round ${Math.min(agent.review.attempts, 2)}/2`;
+  } else if (kind === "working" && agent.phase) {
+    detail = agent.phase.replace(/[-_.:]+/g, " ");
+  }
+
+  return { kind, ...base, detail };
+}
+
 function formatDuration(seconds = 0) {
   if (seconds < 60) return `${Math.max(0, seconds)} sec`;
   const minutes = Math.floor(seconds / 60);
@@ -575,10 +672,11 @@ function arrangeStage(agents: Agent[]) {
   return { orchestrator, occupants, overflow: remaining };
 }
 
-function AgentSprite({ agent }: { agent: Agent }) {
+function AgentSprite({ agent, activity }: { agent: Agent; activity: ActivityView }) {
   const gaze = GAZE_LAYOUTS[spriteKeyFor(agent)] ?? GAZE_LAYOUTS.coder;
   const style = {
     "--role-accent": roleColor(agent.role),
+    "--activity-accent": activity.color,
     "--agent-delay": `${stableHash(agent.id) % 700}ms`,
   } as CSSProperties;
 
@@ -602,8 +700,12 @@ function AgentSprite({ agent }: { agent: Agent }) {
             </g>
           ))}
         </svg>
-        {agent.status === "working" && <i className="work-pixels"><b /><b /><b /></i>}
-        {agent.status === "reviewing" && <i className="review-scan" />}
+        {activity.kind !== "idle" && (
+          <span className={`activity-effect effect-${activity.kind}`}>
+            <b>{activity.glyph}</b><i /><i /><i />
+          </span>
+        )}
+        {activity.kind === "reviewing" && <i className="review-scan" />}
       </span>
     </span>
   );
@@ -623,36 +725,39 @@ function AgentHotspot({
   onSelect: () => void;
 }) {
   const coordinates = STAGE_SLOTS[slot];
-  const meta = STATUS_META[agent.status];
+  const activity = activityFor(agent, assignment);
+  const taskTitle = assignment?.title ?? agent.task ?? "Ready for assignment";
   const style = {
     left: `${coordinates.x}%`,
     top: `${coordinates.y}%`,
     width: `${coordinates.width}%`,
     height: `${coordinates.height}%`,
     "--role-accent": roleColor(agent.role),
+    "--activity-accent": activity.color,
   } as CSSProperties;
 
   return (
     <button
       type="button"
-      className={`agent-hotspot hotspot-${slot} status-${agent.status} presence-${agent.presence ?? "demo"}${
+      className={`agent-hotspot hotspot-${slot} status-${agent.status} activity-${activity.kind} presence-${agent.presence ?? "demo"}${
         selected ? " is-selected" : ""
       }`}
       style={style}
       onClick={onSelect}
       aria-pressed={selected}
-      aria-label={`${agent.name}, ${meta.label}. ${assignment?.title ?? agent.task ?? "No task"}`}
+      aria-label={`${agent.name}. ${activity.label}. ${taskTitle}. ${activity.detail}`}
       title={`${coordinates.label}: open ${agent.name}`}
     >
-      <AgentSprite agent={agent} />
+      <AgentSprite agent={agent} activity={activity} />
       <span className="agent-label">
-        <i aria-hidden="true" />
-        <span>
-          <strong>{agent.name}</strong>
-          <small>
-            {slot === "orchestrator"
-              ? agent.presence === "standby" ? "level 01 · standby" : "level 01 · dispatching ↓"
-              : `level 02 · ${assignment?.taskId ?? meta.short}`}
+        <i className="agent-status-dot" aria-hidden="true" />
+        <span className="agent-label-copy">
+          <span className="agent-label-head">
+            <strong>{agent.name}</strong><b>{activity.label}</b>
+          </span>
+          <em className="agent-task-title">{taskTitle}</em>
+          <small className="agent-phase-line">
+            {activity.detail} · {progressFor(agent)}%
           </small>
         </span>
       </span>
@@ -1292,6 +1397,9 @@ export default function Home() {
   const liveCount = agents.filter((agent) => agent.presence === "live").length;
   const standbyCount = agents.filter((agent) => agent.presence === "standby").length;
   const customCount = agents.filter((agent) => agent.presence === "custom").length;
+  const activeAgents = agents.filter((agent) => (
+    ACTIVE_AGENT_STATUSES.has(agent.status) && !agent.stale && agent.presence !== "standby"
+  ));
 
   useEffect(() => {
     if (!teamOpen) return;
@@ -1411,13 +1519,23 @@ export default function Home() {
           <div className="stage-vignette" aria-hidden="true" />
 
           <svg className="hierarchy-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <path className="route-path route-research" d="M 59 43 V 51 H 34 V 46" />
-            <path className="route-path route-review" d="M 59 43 V 51 H 88 V 46" />
-            <path className="route-path route-code" d="M 59 43 V 53 H 10 V 59" />
-            <path className="route-path route-design" d="M 59 43 V 53 H 29 V 59" />
-            <path className="route-path route-copy" d="M 59 43 V 59" />
-            <path className="route-path route-marketing" d="M 59 43 V 53 H 69 V 59" />
-            <path className="route-path route-image" d="M 59 43 V 53 H 90 V 59" />
+            {WORKER_SLOTS.map((slot) => (
+              <path key={`route-base-${slot}`} className={`route-path route-base route-${slot}`} d={ROUTE_PATHS[slot]} />
+            ))}
+            {WORKER_SLOTS.map((slot) => {
+              const agent = stage.occupants[slot];
+              const assignment = agent ? latestAssignmentByAgent.get(agent.id) : undefined;
+              if (!agent || !assignment || agent.presence === "standby") return null;
+              const activity = activityFor(agent, assignment);
+              return (
+                <path
+                  key={`route-signal-${assignment.id}`}
+                  className={`route-path route-signal route-signal-${activity.kind}`}
+                  d={ROUTE_PATHS[slot]}
+                  style={{ "--activity-accent": activity.color } as CSSProperties}
+                />
+              );
+            })}
           </svg>
 
           {stage.orchestrator && (
@@ -1448,16 +1566,18 @@ export default function Home() {
             const agent = stage.occupants[slot];
             const assignment = agent ? latestAssignmentByAgent.get(agent.id) : undefined;
             if (!agent || !assignment) return null;
+            const activity = activityFor(agent, assignment);
             return (
               <button
                 key={`task-packet-${assignment.id}`}
                 type="button"
-                className={`task-packet packet-${slot}${selectedId === agent.id ? " is-selected" : ""}`}
+                className={`task-packet packet-${slot} task-packet-${activity.kind}${selectedId === agent.id ? " is-selected" : ""}`}
+                style={{ "--activity-accent": activity.color } as CSSProperties}
                 onClick={() => setSelectedId(agent.id)}
                 aria-label={`Open task ${assignment.title}, assigned to ${agent.name}`}
                 title={`${assignment.taskId ?? "TASK"}: ${assignment.title}`}
               >
-                <i aria-hidden="true">◆</i><span>{assignment.taskId ?? "TASK"}</span>
+                <i aria-hidden="true">{activity.glyph}</i><span>{assignment.taskId ?? activity.label}</span>
               </button>
             );
           })}
@@ -1472,6 +1592,31 @@ export default function Home() {
             </button>
           )}
         </figure>
+      </section>
+
+      <section className="mobile-activity" aria-label="Current agent activity">
+        <header>
+          <span>{usingDemo ? "SIMULATED SHIFT" : "LIVE ACTIVITY"}</span>
+          <b>{activeAgents.length} active</b>
+        </header>
+        <div>
+          {(activeAgents.length ? activeAgents : agents.slice(0, 3)).map((agent) => {
+            const assignment = latestAssignmentByAgent.get(agent.id);
+            const activity = activityFor(agent, assignment);
+            return (
+              <button
+                type="button"
+                key={`mobile-activity-${agent.id}`}
+                style={{ "--activity-accent": activity.color } as CSSProperties}
+                onClick={() => setSelectedId(agent.id)}
+              >
+                <i>{activity.glyph}</i>
+                <span><strong>{agent.name}</strong><small>{activity.label}</small></span>
+                <em>{assignment?.title ?? agent.task ?? activity.detail}</em>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <div className="team-controls">
@@ -1491,23 +1636,25 @@ export default function Home() {
               {agents.map((agent) => {
                 const assignment = latestAssignmentByAgent.get(agent.id);
                 const task = assignment?.title ?? agent.task ?? "No task";
+                const activity = activityFor(agent, assignment);
                 return (
                   <button
                     type="button"
                     key={agent.id}
                     className={`team-agent ${selectedId === agent.id ? "active " : ""}presence-${agent.presence}`}
                     onClick={() => selectAgentFromTeam(agent.id)}
-                    aria-label={`${agent.name}, ${displayRole(agent)}, ${STATUS_META[agent.status].label}. ${task}`}
+                    aria-label={`${agent.name}, ${displayRole(agent)}, ${activity.label}. ${task}`}
                     title={task}
+                    style={{ "--activity-accent": activity.color } as CSSProperties}
                   >
                     <span className="team-avatar">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={spriteFor(agent)} alt="" />
-                      <i className={`crew-signal status-${agent.status}`} style={{ "--role-accent": roleColor(agent.role) } as CSSProperties} />
+                      <i className={`crew-signal activity-${activity.kind}`} />
                     </span>
                     <span>
                       <strong>{agent.name}</strong>
-                      <small>{displayRole(agent)} · {agent.presence === "standby" ? "standby" : STATUS_META[agent.status].short}</small>
+                      <small>{displayRole(agent)} · {agent.presence === "standby" ? "standby" : activity.label}</small>
                       <em>{task}</em>
                     </span>
                   </button>
@@ -1540,7 +1687,7 @@ export default function Home() {
           aria-haspopup="dialog"
           onClick={() => setTeamOpen((open) => !open)}
         >
-          <i>›_</i><span>TEAM</span><b>{agents.length}</b>
+          <i>›_</i><span>TEAM · {usingDemo ? "SIMULATED" : `${activeAgents.length} ACTIVE`}</span><b>{agents.length}</b>
         </button>
         <button
           type="button"

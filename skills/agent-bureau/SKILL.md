@@ -22,6 +22,8 @@ start specific agents when needed and end them after they deliver their artifact
 4. For a complex task, build a small graph of independent subtasks and select the roles.
 5. Before launch, give every agent its model profile, inputs, boundaries, deliverable, and
    completion criteria.
+6. If the current project exposes `scripts/bureauctl.mjs`, publish the safe lifecycle
+   events described below. Telemetry is best-effort and must never delay or change the work.
 
 If the task changes the project, read
 [references/project-memory.md](references/project-memory.md). If the task requires search
@@ -48,6 +50,37 @@ Cursor/Grok profile.
 
 Add a new role only when no existing role covers a recurring type of work.
 
+## Activity telemetry
+
+When `scripts/bureauctl.mjs` is present, make the bureau observable from the start instead
+of reconstructing activity after completion:
+
+1. Emit `task.started` for the orchestrator with a concise task title and current phase.
+2. Emit `task.assigned` when work is delegated, including `from-agent-id`, `to-agent-id`,
+   task ID, safe title, and acceptance-oriented summary.
+3. Emit `agent.started` or `task.started` when the worker begins. Publish phase and progress
+   updates only at meaningful transitions; do not create noisy heartbeats.
+4. Emit `artifact.submitted`, then `review.started`, and finish with `review.approved`,
+   `review.revision_requested`, `task.blocked`, or `task.completed` as appropriate.
+5. If publication fails, continue the actual task and mention the telemetry gap in the
+   delivery only when it affects the requested observer experience.
+
+Example:
+
+```bash
+node scripts/bureauctl.mjs emit \
+  --type task.assigned \
+  --task-id TASK-001 \
+  --from-agent-id orchestrator \
+  --to-agent-id coder \
+  --title "Implement the accepted interface" \
+  --summary "Build and test the approved scope"
+```
+
+Telemetry is a public-facing operational summary, not a transcript. Never publish prompts,
+responses, hidden reasoning, tool arguments, file contents or paths, diffs, credentials,
+personal data, or secrets. Prefer a generic safe title when the underlying task is private.
+
 ## Assignment package
 
 Give each agent one self-contained package:
@@ -63,6 +96,7 @@ deliverable: Result format and location
 acceptance: Verifiable criteria
 model_profile: Requested provider/model/mode/effort
 budget: Limit on time, iterations, or requests
+telemetry: Safe task title and phase names to publish, when supported
 ```
 
 Do not give an agent the entire project context without need. Provide only relevant

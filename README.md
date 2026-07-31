@@ -69,14 +69,18 @@ The `office` command starts both:
 - the event collector on `127.0.0.1:7331`.
 
 Both addresses are available only on this computer. The public Vercel site
-cannot access the local collector, so it safely shows the demo snapshot.
+uses a read-only browser bridge to the same loopback collector. When this
+computer and the observer are running, `https://agent-bureau.vercel.app` shows
+the live shift; when they are not, it safely falls back to the demo snapshot.
+Telemetry remains on this computer: Vercel does not receive or store it.
 
 ## Connecting live Codex events
 
 The project already includes `.codex/config.toml` and the safe
 `scripts/codex-hook.mjs` bridge. To connect it for the first time:
 
-1. Start Pixel Office.
+1. Start Pixel Office. A trusted hook also attempts to start only the collector
+   automatically if it is not already running.
 2. Open a new Codex task from this repository.
 3. Open `/hooks` and trust the project definitions.
 4. Start a subagent or tool; the office updates automatically.
@@ -89,9 +93,29 @@ only sends a reduced event to the local collector. For `Stop` and
 If the collector is off, Codex continues normally. The interface shows the demo
 shift until live agents appear.
 
+The production origin is allowed to read `GET /api/state` but cannot post
+events. Additional self-hosted UI origins can be added explicitly with the
+comma-separated `BUREAU_READ_ONLY_ORIGINS` environment variable. Localhost UI
+origins retain read/write access; CLI and hook traffic has no browser origin.
+
 ## Agent Bureau events
 
-An external orchestrator can send its own statuses and explicit assignments:
+An external orchestrator can send its own statuses and explicit assignments.
+The bundled CLI avoids hand-writing JSON and publishes only allowlisted fields:
+
+```bash
+node scripts/bureauctl.mjs emit \
+  --type task.assigned \
+  --task-id TASK-42 \
+  --from-agent-id orchestrator \
+  --to-agent-id coder-1 \
+  --name Developer \
+  --role coder \
+  --title "Add authentication" \
+  --summary "Build middleware and tests"
+```
+
+The raw HTTP contract remains available:
 
 ```bash
 curl --request POST \
@@ -141,8 +165,8 @@ History is stored in the ignored `.bureau/` directory:
 .bureau/state.json    — latest office snapshot
 ```
 
-Nothing is sent to the cloud automatically. A cloud read-only mirror can be
-added later on top of the same event format.
+Nothing is uploaded to the cloud automatically. The public UI reads the local
+snapshot from the browser through an exact-origin, read-only CORS rule.
 
 Profiles created through `ADD AGENT` are stored separately in the current
 browser's `localStorage` under `agent-bureau.agent-profiles.v2`. Records in the
