@@ -39,6 +39,7 @@ export type RuntimeProviderDefinition = {
   adapterId: string;
   adapterMode: "fixed" | "editable";
   description: string;
+  setupHint: string;
   modelPlaceholder: string;
   defaultReasoning: ReasoningLevel;
   endpointMode: "none" | "optional" | "required";
@@ -49,6 +50,7 @@ export type RuntimeProviderDefinition = {
 export type CustomAgentDefinition = {
   id: string;
   name: string;
+  roleTitle?: string;
   officeKey: OfficeKey;
   avatarKey: OfficeKey;
   runtime: RuntimeProfile;
@@ -171,6 +173,11 @@ export function parseRuntimeProviders(value: unknown): RuntimeProviderDefinition
       candidate.badge.length > 30 ||
       typeof candidate.description !== "string" ||
       candidate.description.length > 180 ||
+      (candidate.setupHint !== undefined && (
+        typeof candidate.setupHint !== "string" ||
+        !candidate.setupHint.trim() ||
+        candidate.setupHint.length > 260
+      )) ||
       typeof candidate.modelPlaceholder !== "string" ||
       candidate.modelPlaceholder.length > 180 ||
       typeof candidate.defaultReasoning !== "string" ||
@@ -192,6 +199,9 @@ export function parseRuntimeProviders(value: unknown): RuntimeProviderDefinition
       adapterId,
       adapterMode: candidate.adapterMode as "fixed" | "editable",
       description: candidate.description.trim(),
+      setupHint: typeof candidate.setupHint === "string"
+        ? candidate.setupHint.trim()
+        : "Connect this provider through a trusted local runtime adapter.",
       modelPlaceholder: candidate.modelPlaceholder.trim(),
       defaultReasoning: candidate.defaultReasoning.trim(),
       endpointMode: candidate.endpointMode as "none" | "optional" | "required",
@@ -219,6 +229,7 @@ export function parseCustomAgents(
       const candidate = item as Partial<CustomAgentDefinition>;
       const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
       const name = typeof candidate.name === "string" ? candidate.name.trim() : "";
+      const roleTitle = typeof candidate.roleTitle === "string" ? candidate.roleTitle.trim() : "";
       const prompt = typeof candidate.systemPrompt === "string"
         ? candidate.systemPrompt.trim()
         : "";
@@ -233,6 +244,7 @@ export function parseCustomAgents(
         seenIds.has(id) ||
         !name ||
         name.length > 80 ||
+        (roleTitle && (roleTitle.length < 2 || roleTitle.length > 80 || /[\u0000-\u001f\u007f]/.test(roleTitle))) ||
         !OFFICE_KEY_SET.has(candidate.officeKey ?? "") ||
         !OFFICE_KEY_SET.has(candidate.avatarKey ?? "") ||
         prompt.length < 12 ||
@@ -248,6 +260,7 @@ export function parseCustomAgents(
       accepted.push({
         id,
         name,
+        ...(roleTitle ? { roleTitle } : {}),
         officeKey: candidate.officeKey as OfficeKey,
         avatarKey: candidate.avatarKey as OfficeKey,
         runtime: { ...runtime },

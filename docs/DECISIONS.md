@@ -301,3 +301,27 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
   clock HUD is rendered; Team supports click, keyboard, `Escape`, and focus
   restoration; Add Agent remains fully visible at desktop and 320 px widths;
   hover/focus changes only the gaze; the Designer beret is opaque.
+
+## ADR-018 — Readability-first controls and explicit agent identity
+
+- **Status:** accepted
+- **Date:** 2026-07-31
+- **Decision:** labels and roster cards must remain readable over the pixel art;
+  agent creation asks for an explicit name and specialty instead of deriving
+  both from the avatar. Reasoning uses a dropdown, while the model ID remains an
+  open text field because provider catalogs change independently.
+- **Runtime boundary:** every provider card includes a short setup hint and the
+  builder states that a browser profile does not launch a CLI or model. Existing
+  provider catalogs without the new hint receive a generic local-adapter note.
+- **Layout:** the scene slightly overscans its source image to hide its dark edge
+  pixels; the Team controls sit below raised lower-row labels; Team avatars and
+  builder fields use materially larger sizes.
+- **Brand:** the app icon is a cozy pixel office house rather than a generic
+  framework favicon, preserving the Bureau metaphor at browser-tab scale.
+- **Rejected alternatives:** tiny display type that only works in screenshots;
+  a free-text reasoning field; naming a new profile `Developer 2` from its
+  selected sprite; implying that provider selection establishes a live runtime.
+- **Verification:** labels, Team rows, and form copy are legible at desktop and
+  mobile sizes; incomplete submission produces a visible error; name and role
+  survive profile parsing; the reasoning control is a select; both icon files
+  are part of the production build.

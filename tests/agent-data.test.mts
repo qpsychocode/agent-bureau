@@ -19,6 +19,7 @@ function customRecord(index: number) {
   return {
     id: `custom-test-${index.toString(36).padStart(2, "0")}`,
     name: `Agent ${index}`,
+    roleTitle: "Growth researcher",
     officeKey: "coder",
     avatarKey: "designer",
     runtime: {
@@ -61,6 +62,13 @@ test("legacy profiles migrate to an explicit unconfigured runtime", () => {
   assert.equal(migrated.runtime.adapterId, "unconfigured");
   assert.equal(migrated.runtime.model, "not-selected");
   assert.equal(migrated.systemPrompt, legacy.systemPrompt);
+});
+
+test("profiles created before custom specialties remain readable", () => {
+  const legacyNamedProfile = { ...customRecord(10), roleTitle: undefined };
+  const [parsed] = parseCustomAgents(JSON.stringify([legacyNamedProfile]));
+  assert.equal(parsed.name, legacyNamedProfile.name);
+  assert.equal(parsed.roleTitle, undefined);
 });
 
 test("runtime profiles keep arbitrary safe model settings without accepting secrets or unsafe URLs", () => {
@@ -120,6 +128,7 @@ test("runtime catalog is data-driven and drops duplicate or malformed connectors
     adapterId: "community-adapter",
     adapterMode: "fixed",
     description: "A user-supplied trusted runtime adapter",
+    setupHint: "Start the trusted community adapter locally.",
     modelPlaceholder: "Any model id",
     defaultReasoning: "provider-default",
     endpointMode: "optional",
@@ -132,6 +141,11 @@ test("runtime catalog is data-driven and drops duplicate or malformed connectors
     { ...provider, id: "bad id" },
   ]), [provider]);
   assert.equal(parseRuntimeProviders([{ ...provider, id: "required-env", credentialEnvMode: "required" }]).length, 1);
+  const legacyCatalog = { ...provider, setupHint: undefined };
+  assert.equal(
+    parseRuntimeProviders([legacyCatalog])[0].setupHint,
+    "Connect this provider through a trusted local runtime adapter.",
+  );
 });
 
 test("known provider policies cannot be bypassed through localStorage", () => {
@@ -142,6 +156,7 @@ test("known provider policies cannot be bypassed through localStorage", () => {
     adapterId: "cursor-agent-cli",
     adapterMode: "fixed",
     description: "Cursor CLI",
+    setupHint: "Authenticate Cursor CLI and select a model.",
     modelPlaceholder: "Model slug",
     defaultReasoning: "high",
     endpointMode: "none",

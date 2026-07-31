@@ -23,12 +23,12 @@ collector and show live Codex events from this computer.
 - a dedicated themed office for each permanent role; additional live agents
   remain available in the digital annex and Team roster, while unknown roles
   receive a deterministic fallback sprite;
-- a compact `TEAM` popover and a separate, always-visible `ADD AGENT` action;
-- a profile builder with eight offices, eight avatars, a runtime, arbitrary model
-  and reasoning values, and a required system prompt; profiles appear without
-  changes to React code;
+- a readable `TEAM` popover and a separate, always-visible `ADD AGENT` action;
+- a profile builder with a custom name and specialty, eight offices, eight
+  avatars, an arbitrary model ID, a reasoning dropdown, a runtime connection
+  guide, and a required system prompt; profiles appear without React changes;
 - an English interface and social image, an upward-gaze hover/focus response,
-  and corrected Designer sprite transparency;
+  corrected Designer sprite transparency, and a cozy pixel-house tab icon;
 - a safe local collector with an explicit field allowlist;
 - independent verification with no more than two revision rounds in the Agent
   Bureau skill;
@@ -161,19 +161,22 @@ The builder is not tied to one provider. Its starter catalog includes:
   Qwen, or GLM;
 - a custom CLI, SDK, or local bridge.
 
-Model ID and reasoning are arbitrary safe strings, so the interface is not
-limited by a stale model allowlist. An API-compatible runtime can include an
-HTTP(S) endpoint. Instead of an API key, the profile stores only an environment
-variable name such as `OPENAI_API_KEY`; only a trusted local adapter reads the
-secret value.
+Model ID remains an arbitrary safe string, so the interface is not limited by a
+stale model allowlist. Reasoning is selected from a readable dropdown covering
+provider default, low, medium, high, xhigh, max, and ultra. An API-compatible
+runtime can include an HTTP(S) endpoint. Instead of an API key, the profile
+stores only an environment variable name such as `OPENAI_API_KEY`; only a
+trusted local adapter reads the secret value.
 
 The provider catalog lives in
 [`config/runtime-providers.json`](config/runtime-providers.json), and the portable
 profile schema lives in
 [`config/agent-profile.schema.json`](config/agent-profile.schema.json). Add a
 builder option by adding a JSON record with `id`, `label`, `adapterId`,
-`adapterMode`, and field policies. Never put shell commands in the catalog;
-executable adapter code stays local and is reviewed separately.
+`adapterMode`, a short `setupHint`, and field policies. Existing catalogs that
+omit `setupHint` receive a safe generic local-adapter explanation. Never put
+shell commands in the catalog; executable adapter code stays local and is
+reviewed separately.
 
 Important: the public Vercel site creates a **configuration**; it does not start
 a process on the user's computer. A local runtime adapter performs the real

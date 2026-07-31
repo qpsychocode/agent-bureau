@@ -119,3 +119,20 @@ symptom, an adopted rule, and a verification method.
   outside click and `Escape` and restores focus; Add Agent is visible at 320 px;
   gaze changes on hover and focus; `prefers-reduced-motion` remains respected.
 - **Related decision:** ADR-017.
+
+## LESSON-008 — Pixel-art typography still has to be readable
+
+- **Date:** 2026-07-31
+- **Symptom:** agent names, Team cards, and the creation form were visually
+  consistent but too small to read; Team covered a lower-row label, and an
+  inactive-looking Create button did not explain what was missing.
+- **Cause:** screenshot-scale typography and decoration were prioritized over
+  real viewport use, while identity and runtime requirements stayed implicit.
+- **Rule:** decorative pixel styling does not justify microtype. Use explicit
+  name and specialty fields, ordinary readable input sizes, dropdowns for known
+  finite choices, and a visible validation message when submission is invalid.
+- **Before delivery:** verify the closed scene, Team roster, and full builder in
+  a real browser; check desktop and mobile widths; confirm controls do not cover
+  agent labels; create/parse a named profile; inspect asset alpha instead of
+  assuming transparency is only a visual illusion.
+- **Related decision:** ADR-018.

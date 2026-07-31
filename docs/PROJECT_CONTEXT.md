@@ -25,17 +25,23 @@ who is blocked, and which result has already been accepted.
   clickable assignment packets
 - Character response: hover and keyboard focus shift the characters' gaze upward
   without drawing the old rectangular hotspot; keyboard focus remains visible
-- Designer sprite: alpha holes in the purple beret are repaired
+- Designer sprite: the purple beret was regenerated with an opaque interior;
+  the office no longer shows through the hat
+- Brand icon: `app/icon.png` and `app/apple-icon.png` show a cozy pixel office
+  house with warm windows and a mint status light
 - Live merge: the permanent demo roster remains the office skeleton; live events
   update matching agents by `id` or role while others remain `standby`
 - Dynamic pool: eight permanent roles and eight assigned offices; a new `agentId`
   becomes a separate DOM node, while unknown or duplicate roles enter the digital
   annex and Team popover instead of standing between desks
-- Profile builder: `ADD AGENT` offers eight reusable offices, eight avatars, and
-  a data-driven runtime catalog; it accepts arbitrary model ID/reasoning values,
-  a safe endpoint, an environment-variable name, and a system prompt, stores at
-  most 40 profiles in `localStorage` v2, and immediately adds them to the annex
-  and Team roster
+- Profile builder: `ADD AGENT` accepts a custom name and specialty, offers eight
+  reusable offices, eight avatars, and a data-driven runtime catalog; it accepts
+  an arbitrary model ID, a reasoning dropdown, a safe endpoint, an
+  environment-variable name, and a system prompt, stores at most 40 profiles in
+  `localStorage` v2, and immediately adds them to the annex and Team roster
+- Readability: scene labels use 12/9 px type, Team avatars are 58 × 66 px, the
+  builder uses 14–15 px inputs, and a slight scene overscan removes dark source
+  margins without changing the office composition
 - Runtime catalog: `config/runtime-providers.json`; portable profile schema:
   `config/agent-profile.schema.json`; adapter contract:
   `docs/RUNTIME_ADAPTERS.md`

@@ -77,6 +77,7 @@ type Agent = {
   review?: Review;
   customOffice?: OfficeKey;
   customAvatar?: OfficeKey;
+  customRoleTitle?: string;
   customPromptStored?: boolean;
   customRuntime?: RuntimeProfile;
 };
@@ -127,6 +128,7 @@ const FALLBACK_RUNTIME_PROVIDER: RuntimeProviderDefinition = {
   adapterId: "custom-adapter",
   adapterMode: "editable",
   description: "Your own CLI, SDK, or local bridge",
+  setupHint: "Implement and trust this adapter locally before trying to run the profile.",
   modelPlaceholder: "Model ID supported by your runtime",
   defaultReasoning: "provider-default",
   endpointMode: "optional",
@@ -358,6 +360,10 @@ function roleLabel(role: string) {
   return ROLE_LABELS[roleKey(role)] ?? role ?? "Specialist";
 }
 
+function displayRole(agent: Agent) {
+  return agent.customRoleTitle?.trim() || roleLabel(agent.role);
+}
+
 function roleColor(role: string) {
   return ROLE_COLORS[roleKey(role)] ?? ROLE_COLORS.agent;
 }
@@ -409,6 +415,7 @@ function customDefinitionToAgent(definition: CustomAgentDefinition): Agent {
     stale: false,
     customOffice: definition.officeKey,
     customAvatar: definition.avatarKey,
+    customRoleTitle: definition.roleTitle,
     customPromptStored: true,
     customRuntime: definition.runtime,
   };
@@ -663,6 +670,8 @@ function AgentBuilder({
   onClose: () => void;
 }) {
   const initialProvider = RUNTIME_PROVIDERS[0] ?? FALLBACK_RUNTIME_PROVIDER;
+  const [agentName, setAgentName] = useState("");
+  const [roleTitle, setRoleTitle] = useState(ROLE_LABELS.coder);
   const [officeKey, setOfficeKey] = useState<OfficeKey>("coder");
   const [avatarKey, setAvatarKey] = useState<OfficeKey>("coder");
   const [providerId, setProviderId] = useState(initialProvider.id);
@@ -672,6 +681,7 @@ function AgentBuilder({
   const [endpoint, setEndpoint] = useState("");
   const [credentialEnv, setCredentialEnv] = useState(initialProvider.credentialEnv);
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [formError, setFormError] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
 
@@ -734,6 +744,9 @@ function AgentBuilder({
     (provider.credentialEnvMode !== "required" || credentialEnv.trim()) &&
     (provider.adapterMode !== "editable" || adapterId.trim()),
   );
+  const identityValid = agentName.trim().length >= 2 && roleTitle.trim().length >= 2;
+  const promptValid = systemPrompt.trim().length >= 12;
+  const canCreate = identityValid && promptValid && runtimeValid;
 
   const chooseProvider = (nextProvider: RuntimeProviderDefinition) => {
     setProviderId(nextProvider.id);
@@ -742,18 +755,41 @@ function AgentBuilder({
     setReasoning(nextProvider.defaultReasoning);
     setEndpoint("");
     setCredentialEnv(nextProvider.credentialEnvMode === "none" ? "" : nextProvider.credentialEnv);
+    setFormError("");
+  };
+
+  const chooseAvatar = (nextAvatar: OfficeKey) => {
+    const previousDefault = ROLE_LABELS[avatarKey] ?? "Specialist";
+    setAvatarKey(nextAvatar);
+    if (!roleTitle.trim() || roleTitle === previousDefault) {
+      setRoleTitle(ROLE_LABELS[nextAvatar] ?? "Specialist");
+    }
+    setFormError("");
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const name = agentName.trim();
+    const customRole = roleTitle.trim();
     const prompt = systemPrompt.trim();
-    if (prompt.length < 12 || !runtime || !runtimeValid) return;
-    const sameAvatarCount = existing.filter((item) => item.avatarKey === avatarKey).length;
-    const baseName = ROLE_LABELS[avatarKey] ?? "Agent";
-    const suffix = sameAvatarCount + 2;
+    if (!canCreate || !runtime) {
+      setFormError("Complete the agent name, specialty, model ID, runtime fields, and a system prompt of at least 12 characters.");
+      return;
+    }
+    const nameSlug = name
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 32) || "agent";
+    const id = reserveUniqueAgentId(
+      `custom-${nameSlug}-${Date.now().toString(36)}`,
+      new Set([...ROSTER_AGENT_IDS, ...existing.map((item) => item.id)]),
+    );
     onCreate({
-      id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-      name: `${baseName} ${suffix}`,
+      id,
+      name,
+      roleTitle: customRole,
       officeKey,
       avatarKey,
       runtime,
@@ -774,16 +810,47 @@ function AgentBuilder({
         aria-labelledby="builder-title"
         tabIndex={-1}
       >
-        <button type="button" className="builder-close" onClick={onClose} aria-label="Close profile builder">×</button>
+        <button type="button" className="builder-close" onClick={onClose} aria-label="Close profile builder"><span aria-hidden="true" /></button>
         <header className="builder-header">
           <span>PROFILE BUILDER</span>
           <h2 id="builder-title">New agent</h2>
-          <p>Office + avatar + any runtime + system prompt. No UI code changes required.</p>
+          <p>Name + specialty + office + avatar + runtime + system prompt. Everything is saved locally.</p>
         </header>
 
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <section className="builder-section">
-            <div className="builder-step"><b>01</b><span>Choose an office</span></div>
+            <div className="builder-step"><b>01</b><span>Name your agent</span></div>
+            <div className="identity-fields">
+              <label>
+                <span>Agent name <b>required</b></span>
+                <input
+                  id="agent-name"
+                  value={agentName}
+                  onChange={(event) => { setAgentName(event.target.value); setFormError(""); }}
+                  maxLength={80}
+                  placeholder="e.g. Atlas"
+                  aria-invalid={Boolean(formError) && agentName.trim().length < 2}
+                  autoFocus
+                />
+                <small>This is the name shown in Team and the inspector.</small>
+              </label>
+              <label>
+                <span>Specialty / role <b>required</b></span>
+                <input
+                  id="agent-role"
+                  value={roleTitle}
+                  onChange={(event) => { setRoleTitle(event.target.value); setFormError(""); }}
+                  maxLength={80}
+                  placeholder="e.g. Growth researcher"
+                  aria-invalid={Boolean(formError) && roleTitle.trim().length < 2}
+                />
+                <small>Write any role; the avatar is only its visual template.</small>
+              </label>
+            </div>
+          </section>
+
+          <section className="builder-section">
+            <div className="builder-step"><b>02</b><span>Choose an office</span></div>
             <div className="office-picker">
               {OFFICE_TEMPLATES.map((item) => (
                 <button
@@ -804,14 +871,14 @@ function AgentBuilder({
 
           <section className="builder-section builder-middle">
             <div>
-              <div className="builder-step"><b>02</b><span>Choose an avatar</span></div>
+              <div className="builder-step"><b>03</b><span>Choose an avatar template</span></div>
               <div className="avatar-picker">
                 {AVATAR_OPTIONS.map((item) => (
                   <button
                     type="button"
                     key={item.key}
                     className={avatarKey === item.key ? "active" : ""}
-                    onClick={() => setAvatarKey(item.key)}
+                    onClick={() => chooseAvatar(item.key)}
                     aria-pressed={avatarKey === item.key}
                     title={item.label}
                   >
@@ -828,12 +895,12 @@ function AgentBuilder({
               <img className="preview-office" src={office.image} alt="" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="preview-agent" src={avatar.image} alt="" />
-              <span><b>{avatar.label}</b><small>{office.label}</small></span>
+              <span><b>{agentName.trim() || "Your agent"}</b><small>{roleTitle.trim() || avatar.label} · {office.label}</small></span>
             </div>
           </section>
 
           <section className="builder-section">
-            <div className="builder-step"><b>03</b><span>Configure runtime</span></div>
+            <div className="builder-step"><b>04</b><span>Configure runtime</span></div>
             <div className="provider-picker">
               {RUNTIME_PROVIDERS.map((item) => (
                 <button
@@ -856,25 +923,25 @@ function AgentBuilder({
                 <input
                   id="runtime-model"
                   value={model}
-                  onChange={(event) => setModel(event.target.value)}
+                  onChange={(event) => { setModel(event.target.value); setFormError(""); }}
                   maxLength={160}
                   placeholder={provider.modelPlaceholder}
-                  required
+                  aria-invalid={Boolean(formError) && !model.trim()}
                 />
+                <small>Type or paste the exact model ID exposed by your local runtime.</small>
               </label>
               <label>
                 <span>Reasoning / thinking</span>
-                <input
+                <select
                   id="runtime-reasoning"
-                  list="reasoning-suggestions"
                   value={reasoning}
                   onChange={(event) => setReasoning(event.target.value)}
-                  maxLength={32}
-                  required
-                />
-                <datalist id="reasoning-suggestions">
-                  {REASONING_SUGGESTIONS.map((item) => <option key={item} value={item} />)}
-                </datalist>
+                >
+                  {REASONING_SUGGESTIONS.map((item) => (
+                    <option key={item} value={item}>{item === "provider-default" ? "Provider default" : item}</option>
+                  ))}
+                </select>
+                <small>Choose a supported effort level; no typing required.</small>
               </label>
               <label>
                 <span>Adapter ID</span>
@@ -919,24 +986,30 @@ function AgentBuilder({
                 </label>
               )}
             </div>
-            <p className="runtime-safety"><i>◆</i> Configuration only. Never enter an API key here; the local adapter reads the named environment variable.</p>
+            <div className="runtime-connection-note">
+              <span>LOCAL CONNECTION REQUIRED</span>
+              <strong>{provider.label} does not run inside this browser.</strong>
+              <p>{provider.setupHint}</p>
+            </div>
+            <p className="runtime-safety"><i>◆</i> Configuration only. Never enter an API key here; the trusted local adapter reads the named environment variable.</p>
           </section>
 
           <section className="builder-section">
-            <label className="builder-step" htmlFor="system-prompt"><b>04</b><span>System prompt</span></label>
+            <label className="builder-step" htmlFor="system-prompt"><b>05</b><span>System prompt</span></label>
             <textarea
               id="system-prompt"
               value={systemPrompt}
-              onChange={(event) => setSystemPrompt(event.target.value)}
+              onChange={(event) => { setSystemPrompt(event.target.value); setFormError(""); }}
               maxLength={6_000}
               rows={7}
               placeholder="You are a specialized agent… Your objective… Acceptance criteria…"
-              required
+              aria-invalid={Boolean(formError) && !promptValid}
             />
+            {formError && <p className="builder-error" role="alert">{formError}</p>}
             <div className="builder-submit-row">
               <p><i>◆</i> The prompt stays in this browser&apos;s localStorage and never enters telemetry.</p>
               <span>{systemPrompt.length}/6000</span>
-              <button type="submit" disabled={systemPrompt.trim().length < 12 || !runtimeValid}>+ CREATE AGENT</button>
+              <button type="submit" className={canCreate ? "is-ready" : ""}>+ CREATE AGENT</button>
             </div>
           </section>
         </form>
@@ -990,7 +1063,7 @@ function AssignmentInspector({
       tabIndex={-1}
     >
       <button type="button" className="inspector-close" onClick={onClose} aria-label="Close agent details">
-        ×
+        <span aria-hidden="true" />
       </button>
       <div className="inspector-topline">
         <span className="inspector-kicker">
@@ -1007,7 +1080,7 @@ function AssignmentInspector({
 
       <div className="identity-line">
         <div className="identity-beacon" aria-hidden="true"><i /></div>
-        <div><h2 id="inspector-title">{agent.name}</h2><p>{roleLabel(agent.role)}</p></div>
+        <div><h2 id="inspector-title">{agent.name}</h2><p>{displayRole(agent)}</p></div>
       </div>
 
       {agent.stale && <div className="stale-warning">Signal has not been updated recently.</div>}
@@ -1424,7 +1497,7 @@ export default function Home() {
                     key={agent.id}
                     className={`team-agent ${selectedId === agent.id ? "active " : ""}presence-${agent.presence}`}
                     onClick={() => selectAgentFromTeam(agent.id)}
-                    aria-label={`${agent.name}, ${roleLabel(agent.role)}, ${STATUS_META[agent.status].label}. ${task}`}
+                    aria-label={`${agent.name}, ${displayRole(agent)}, ${STATUS_META[agent.status].label}. ${task}`}
                     title={task}
                   >
                     <span className="team-avatar">
@@ -1434,7 +1507,8 @@ export default function Home() {
                     </span>
                     <span>
                       <strong>{agent.name}</strong>
-                      <small>{roleLabel(agent.role)} · {agent.presence === "standby" ? "standby" : STATUS_META[agent.status].short}</small>
+                      <small>{displayRole(agent)} · {agent.presence === "standby" ? "standby" : STATUS_META[agent.status].short}</small>
+                      <em>{task}</em>
                     </span>
                   </button>
                 );

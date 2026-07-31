@@ -33,6 +33,8 @@ test("server-renders the Agent Bureau office", async () => {
   const html = await response.text();
   assert.match(html, /<html lang="en"/i);
   assert.match(html, /<title>Agent Bureau — Live Office<\/title>/i);
+  assert.match(html, /rel="icon"[^>]+href="[^"]*\/icon\.png/i);
+  assert.match(html, /rel="apple-touch-icon"[^>]+href="[^"]*\/apple-icon\.png/i);
   assert.match(html, /Agent Bureau/);
   assert.match(html, /LIVE OFFICE/);
   assert.match(html, /TASK ROUTES/);
@@ -82,6 +84,13 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(page, /OpenAI-compatible|runtimeProvidersRaw/);
   assert.match(page, /Environment variable/);
   assert.match(page, /function AgentBuilder/);
+  assert.match(page, /id="agent-name"/);
+  assert.match(page, /id="agent-role"/);
+  assert.match(page, /roleTitle:\s*customRole/);
+  assert.match(page, /<select\s+id="runtime-reasoning"/);
+  assert.match(page, /LOCAL CONNECTION REQUIRED/);
+  assert.match(page, /provider\.setupHint/);
+  assert.doesNotMatch(page, /datalist id="reasoning-suggestions"/);
   assert.match(page, /prompt stays in this browser/);
   assert.match(page, /teamOpen|team-popover|aria-expanded/);
   assert.match(page, /gaze-up-layer|GAZE_LAYOUTS/);
@@ -111,6 +120,10 @@ test("removes starter-only preview code and metadata", async () => {
   assert.match(css, /@keyframes agent-arrive/);
   assert.match(css, /@keyframes team-popover-enter/);
   assert.match(css, /\.gaze-up-layer/);
+  assert.match(css, /\.agent-label strong \{[^}]*font-size: 12px/);
+  assert.match(css, /\.team-avatar \{[^}]*width: 58px; height: 66px/);
+  assert.match(css, /\.identity-fields \{[^}]*grid-template-columns: 1fr 1fr/);
+  assert.match(css, /\.builder-close span::before/);
   assert.doesNotMatch(css, /\.observer-hud|\.crew-dock|\.hotspot-aura|\.sprite-beacon/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(layout, /Agent Bureau — Live Office/);
@@ -135,6 +148,8 @@ test("removes starter-only preview code and metadata", async () => {
     access(new URL("../public/agents/copywriter.png", import.meta.url)),
     access(new URL("../public/agents/marketing.png", import.meta.url)),
     access(new URL("../public/agents/image.png", import.meta.url)),
+    access(new URL("../app/icon.png", import.meta.url)),
+    access(new URL("../app/apple-icon.png", import.meta.url)),
     access(new URL("../public/offices/orchestrator.webp", import.meta.url)),
     access(new URL("../public/offices/researcher.webp", import.meta.url)),
     access(new URL("../public/offices/reviewer.webp", import.meta.url)),

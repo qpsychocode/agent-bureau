@@ -36,7 +36,22 @@ separate agents from the monolithic image and support animation and pool growth.
 - The chroma key was removed with the local ImageGen helper; the atlas was split
   reproducibly with `scripts/crop-agent-atlas.py`.
 - `public/agents/designer.png` received an alpha-channel repair in the purple
-  beret so office pixels no longer show through it.
+  beret so office pixels no longer show through it. The current repair was made
+  as a precise object edit: preserve the full character and mint eye pixels,
+  change only the purple beret to a solid opaque pixel surface, and use a flat
+  green chroma background for deterministic local removal.
+
+## Brand and browser icon
+
+- `app/icon.png` — 512 × 512 transparent PNG used by the Next App Router as the
+  browser favicon/app icon.
+- `app/apple-icon.png` — 180 × 180 transparent PNG for Apple touch surfaces.
+- Prompt intent: a compact, welcoming two-storey pixel office house with a dark
+  navy roof, warm amber windows, and one mint status light; strong silhouette,
+  no text, no robots, no watermark, and a flat magenta chroma background.
+- The chroma background was removed with the local ImageGen helper. The artwork
+  remains raster pixel art because it is a brand illustration rather than a
+  code-native interface icon.
 
 ## Render contract
 
