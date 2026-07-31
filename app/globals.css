@@ -314,11 +314,16 @@ button:focus-visible, [tabindex]:focus-visible {
   box-shadow: 0 0 8px var(--cyan);
   animation: review-scan 1.5s steps(8, end) infinite;
 }
-.hotspot-orchestrator .agent-figure { width: 61%; height: 80%; bottom: 8%; }
-.hotspot-research .agent-figure { width: 57%; height: 88%; bottom: 6%; }
-.hot-desk-agent { z-index: 9; }
-.hot-desk-agent .agent-figure { width: 84%; height: 82%; bottom: 13%; }
-.hot-desk-agent .agent-label { bottom: -1%; }
+.hotspot-orchestrator .agent-figure { width: 35%; height: 61%; bottom: 8%; }
+.hotspot-research .agent-figure { width: 72%; height: 61%; bottom: 7%; }
+.hotspot-review .agent-figure { width: 45%; height: 61%; bottom: 7%; }
+.hotspot-code .agent-figure,
+.hotspot-design .agent-figure,
+.hotspot-copy .agent-figure,
+.hotspot-marketing .agent-figure,
+.hotspot-image .agent-figure { width: 53%; height: 72%; bottom: 7%; }
+.hotspot-research .agent-label,
+.hotspot-review .agent-label { bottom: 2%; }
 
 .agent-label {
   position: absolute;
@@ -367,11 +372,13 @@ button:focus-visible, [tabindex]:focus-visible {
 .task-packet:hover, .task-packet.is-selected { color: #fff8e6; border-color: #fff0bd; background: rgba(45,31,22,.94); }
 .task-packet i { color: var(--amber); font-size: 6px; font-style: normal; }
 .task-packet span { max-width: 74px; overflow: hidden; font-size: 6px; letter-spacing: .06em; text-overflow: ellipsis; white-space: nowrap; }
-.packet-research { left: 67.4%; top: 40%; }
-.packet-code { left: 29%; top: 57.3%; }
-.packet-review { left: 52%; top: 57.3%; }
-.packet-creative { left: 79.4%; top: 57.3%; }
-.packet-hot-desk { transform: translateX(-50%); animation-name: packet-float-hot; }
+.packet-research { left: 35%; top: 48%; }
+.packet-review { left: 86%; top: 48%; }
+.packet-code { left: 8%; top: 53%; }
+.packet-design { left: 27%; top: 53%; }
+.packet-copy { left: 47%; top: 53%; }
+.packet-marketing { left: 67%; top: 53%; }
+.packet-image { left: 88%; top: 53%; }
 
 .overflow-counter {
   position: absolute;
@@ -504,10 +511,6 @@ button:focus-visible, [tabindex]:focus-visible {
 @keyframes signal-pulse { 50% { opacity: .45; } }
 @keyframes route-flow { to { stroke-dashoffset: -12; } }
 @keyframes packet-float { 50% { transform: translateY(-2px); } }
-@keyframes packet-float-hot {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(-2px); }
-}
 @keyframes live-aura { 50% { box-shadow: 0 0 0 1px rgba(255,255,255,.05), 0 0 24px color-mix(in srgb, var(--role-accent) 30%, transparent); } }
 @keyframes drawer-enter { from { opacity: 0; transform: translateX(28px); } }
 @keyframes agent-arrive {

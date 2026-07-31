@@ -82,7 +82,14 @@ type BureauState = {
   assignments?: TaskAssignment[];
 };
 
-type WorkerSlot = "research" | "code" | "review" | "creative";
+type WorkerSlot =
+  | "research"
+  | "review"
+  | "code"
+  | "design"
+  | "copy"
+  | "marketing"
+  | "image";
 type StageSlot = "orchestrator" | WorkerSlot;
 
 const DEMO_STATE = demoState as BureauState;
@@ -153,23 +160,25 @@ const STAGE_SLOTS: Record<
   StageSlot,
   { x: number; y: number; width: number; height: number; label: string }
 > = {
-  orchestrator: { x: 44, y: 19, width: 18, height: 32, label: "Центр управления" },
-  research: { x: 72, y: 30, width: 18, height: 23, label: "Исследовательский кабинет" },
-  code: { x: 20, y: 61, width: 21, height: 32, label: "Разработка" },
-  review: { x: 45, y: 61, width: 20, height: 32, label: "Верификация" },
-  creative: { x: 71, y: 61, width: 21, height: 32, label: "Креативная студия" },
+  orchestrator: { x: 42, y: 6, width: 34, height: 47, label: "Командный кабинет" },
+  research: { x: 27, y: 9, width: 15, height: 44, label: "Архив исследователя" },
+  review: { x: 76, y: 9, width: 24, height: 44, label: "QA-лаборатория" },
+  code: { x: 0, y: 55, width: 20, height: 41, label: "Кабинет разработки" },
+  design: { x: 20, y: 55, width: 19, height: 41, label: "Дизайн-студия" },
+  copy: { x: 39, y: 55, width: 20, height: 41, label: "Редакция" },
+  marketing: { x: 59, y: 55, width: 21, height: 41, label: "Маркетинг-кабинет" },
+  image: { x: 80, y: 55, width: 20, height: 41, label: "Иллюстраторская" },
 };
 
-const WORKER_SLOTS: WorkerSlot[] = ["research", "code", "review", "creative"];
-
-const HOT_DESK_SPOTS = [
-  { x: 11, y: 63, width: 12, height: 31 },
-  { x: 37, y: 66, width: 11, height: 28 },
-  { x: 65, y: 66, width: 11, height: 28 },
-  { x: 89, y: 66, width: 10, height: 28 },
-  { x: 15, y: 38, width: 10, height: 25 },
-  { x: 64, y: 35, width: 9, height: 24 },
-] as const;
+const WORKER_SLOTS: WorkerSlot[] = [
+  "research",
+  "review",
+  "code",
+  "design",
+  "copy",
+  "marketing",
+  "image",
+];
 
 function isAgentStatus(value: unknown): value is AgentStatus {
   return typeof value === "string" && value in STATUS_META;
@@ -354,7 +363,10 @@ function preferredSlot(agent: Agent): WorkerSlot | null {
   if (key === "researcher") return "research";
   if (key === "coder") return "code";
   if (key === "reviewer") return "review";
-  if (["designer", "image", "copywriter", "marketing"].includes(key)) return "creative";
+  if (key === "designer") return "design";
+  if (key === "copywriter") return "copy";
+  if (key === "marketing") return "marketing";
+  if (key === "image") return "image";
   return null;
 }
 
@@ -439,9 +451,6 @@ function arrangeStage(agents: Agent[]) {
     const index = remaining.findIndex((agent) => preferredSlot(agent) === slot);
     if (index >= 0) occupants[slot] = remaining.splice(index, 1)[0];
   }
-  for (const slot of WORKER_SLOTS) {
-    if (!occupants[slot] && remaining.length) occupants[slot] = remaining.shift();
-  }
   return { orchestrator, occupants, overflow: remaining };
 }
 
@@ -512,51 +521,6 @@ function AgentHotspot({
               : `уровень 02 · ${assignment?.taskId ?? meta.short}`}
           </small>
         </span>
-      </span>
-    </button>
-  );
-}
-
-function HotDeskAgent({
-  agent,
-  index,
-  assignment,
-  selected,
-  onSelect,
-}: {
-  agent: Agent;
-  index: number;
-  assignment?: RoutedAssignment;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const coordinates = HOT_DESK_SPOTS[index];
-  const meta = STATUS_META[agent.status];
-  const style = {
-    left: `${coordinates.x}%`,
-    top: `${coordinates.y}%`,
-    width: `${coordinates.width}%`,
-    height: `${coordinates.height}%`,
-    "--role-accent": roleColor(agent.role),
-  } as CSSProperties;
-
-  return (
-    <button
-      type="button"
-      className={`agent-hotspot hot-desk-agent status-${agent.status} presence-${agent.presence ?? "demo"}${
-        selected ? " is-selected" : ""
-      }`}
-      style={style}
-      onClick={onSelect}
-      aria-pressed={selected}
-      aria-label={`${agent.name}, дополнительное место, ${meta.label}. ${assignment?.title ?? agent.task ?? "Без задачи"}`}
-      title={`Горячее место ${index + 1}: открыть карточку ${agent.name}`}
-    >
-      <span className="hotspot-aura" aria-hidden="true" />
-      <AgentSprite agent={agent} />
-      <span className="agent-label">
-        <i aria-hidden="true" />
-        <span><strong>{agent.name}</strong><small>уровень 02 · hot desk</small></span>
       </span>
     </button>
   );
@@ -797,30 +761,21 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="office-art"
-            src="/office-empty-v2.png"
-            alt="Пиксельный интерьер Агентского бюро с рабочими кабинетами"
+            src="/office-departments-v3.png"
+            alt="Пиксельный интерьер Агентского бюро с восемью отдельными ролевыми кабинетами"
             width={1672}
             height={941}
           />
           <div className="stage-vignette" aria-hidden="true" />
 
           <svg className="hierarchy-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <path className="route-path route-research" d="M 53 42 V 47 H 73" />
-            <path className="route-path route-code" d="M 53 49 V 57 H 30 V 65" />
-            <path className="route-path route-review" d="M 53 49 V 65" />
-            <path className="route-path route-creative" d="M 53 49 V 57 H 81 V 65" />
-            {stage.overflow.slice(0, HOT_DESK_SPOTS.length).map((agent, index) => {
-              const spot = HOT_DESK_SPOTS[index];
-              const assignment = latestAssignmentByAgent.get(agent.id);
-              if (!assignment) return null;
-              return (
-                <path
-                  key={`route-${agent.id}`}
-                  className="route-path route-hot-desk"
-                  d={`M 53 49 V 58 H ${spot.x + spot.width / 2} V ${spot.y + 3}`}
-                />
-              );
-            })}
+            <path className="route-path route-research" d="M 59 43 V 51 H 34 V 46" />
+            <path className="route-path route-review" d="M 59 43 V 51 H 88 V 46" />
+            <path className="route-path route-code" d="M 59 43 V 53 H 10 V 59" />
+            <path className="route-path route-design" d="M 59 43 V 53 H 29 V 59" />
+            <path className="route-path route-copy" d="M 59 43 V 59" />
+            <path className="route-path route-marketing" d="M 59 43 V 53 H 69 V 59" />
+            <path className="route-path route-image" d="M 59 43 V 53 H 90 V 59" />
           </svg>
 
           {stage.orchestrator && (
@@ -847,17 +802,6 @@ export default function Home() {
             );
           })}
 
-          {stage.overflow.slice(0, HOT_DESK_SPOTS.length).map((agent, index) => (
-            <HotDeskAgent
-              key={agent.id}
-              agent={agent}
-              index={index}
-              assignment={latestAssignmentByAgent.get(agent.id)}
-              selected={selectedId === agent.id}
-              onSelect={() => setSelectedId(agent.id)}
-            />
-          ))}
-
           {WORKER_SLOTS.map((slot) => {
             const agent = stage.occupants[slot];
             const assignment = agent ? latestAssignmentByAgent.get(agent.id) : undefined;
@@ -876,39 +820,20 @@ export default function Home() {
             );
           })}
 
-          {stage.overflow.slice(0, HOT_DESK_SPOTS.length).map((agent, index) => {
-            const assignment = latestAssignmentByAgent.get(agent.id);
-            if (!assignment) return null;
-            const spot = HOT_DESK_SPOTS[index];
-            return (
-              <button
-                key={`task-packet-overflow-${assignment.id}`}
-                type="button"
-                className={`task-packet packet-hot-desk${selectedId === agent.id ? " is-selected" : ""}`}
-                style={{ left: `${spot.x + spot.width / 2}%`, top: `${spot.y - 2}%` }}
-                onClick={() => setSelectedId(agent.id)}
-                aria-label={`Открыть задачу ${assignment.title}, переданную агенту ${agent.name}`}
-                title={`${assignment.taskId ?? "TASK"}: ${assignment.title}`}
-              >
-                <i aria-hidden="true">◆</i><span>{assignment.taskId ?? "TASK"}</span>
-              </button>
-            );
-          })}
-
-          {stage.overflow.length > HOT_DESK_SPOTS.length && (
+          {stage.overflow.length > 0 && (
             <button
               type="button"
               className="overflow-counter"
-              onClick={() => setSelectedId(stage.overflow[HOT_DESK_SPOTS.length]?.id ?? null)}
+              onClick={() => setSelectedId(stage.overflow[0]?.id ?? null)}
             >
-              +{stage.overflow.length - HOT_DESK_SPOTS.length} в очереди
+              +{stage.overflow.length} в цифровом аннексе
             </button>
           )}
         </figure>
       </section>
 
       <header className="observer-hud">
-        <div className="hud-brand"><span>OBSERVER</span><b>v0.4</b></div>
+        <div className="hud-brand"><span>OBSERVER</span><b>v0.5</b></div>
         <button
           type="button"
           className="mode-switch"

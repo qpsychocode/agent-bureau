@@ -61,9 +61,10 @@ test("removes starter-only preview code and metadata", async () => {
   ]);
 
   assert.match(page, /http:\/\/127\.0\.0\.1:7331\/api\/state/);
-  assert.match(page, /src="\/office-empty-v2\.png"/);
+  assert.match(page, /src="\/office-departments-v3\.png"/);
   assert.match(page, /ROLE_SPRITES/);
-  assert.match(page, /HotDeskAgent/);
+  assert.match(page, /"design",\s*"copy",\s*"marketing",\s*"image"/);
+  assert.doesNotMatch(page, /HotDeskAgent|HOT_DESK_SPOTS/);
   assert.match(page, /TaskAssignment|task-packet/);
   assert.match(page, /mergeLiveWithRoster/);
   assert.match(page, /presence:\s*"standby"/);
@@ -81,7 +82,7 @@ test("removes starter-only preview code and metadata", async () => {
     access(new URL("app/_sites-preview", templateRoot)),
   );
   await Promise.all([
-    access(new URL("../public/office-empty-v2.png", import.meta.url)),
+    access(new URL("../public/office-departments-v3.png", import.meta.url)),
     access(new URL("../public/agents/orchestrator.png", import.meta.url)),
     access(new URL("../public/agents/researcher.png", import.meta.url)),
     access(new URL("../public/agents/coder.png", import.meta.url)),
