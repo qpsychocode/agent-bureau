@@ -35,6 +35,11 @@ When assigning the Researcher, use the bundled adapter
 `scripts/cursor-researcher.mjs`; an ordinary Codex subagent does not satisfy the pinned
 Cursor/Grok profile.
 
+When assigning the Coder, request the pinned `coder-primary` profile from
+`references/model-routing.md`. Luna writes implementation code by default; do not silently
+route coding to Sol, Terra, or another substitute. If the active runtime cannot attest
+Luna, stop the Coder assignment and report the unavailable requested profile.
+
 ## Role pool
 
 | Role | When to use | Primary deliverable |

@@ -389,3 +389,25 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
   rejection in `scripts/observer.mjs`; render and observer integration tests.
 - **Revisit when:** the user explicitly approves an authenticated outbound-only
   cloud transport with access controls and retention limits.
+
+## ADR-021 — Luna is pinned for implementation code
+
+- **Status:** accepted
+- **Date:** 2026-08-02
+- **Area:** agent routing, models, coding
+- **Context:** Luna previously appeared only as a generic economy-worker
+  preference, so a Coder could still be assigned Sol or Terra.
+- **Decision:** use the `coder-primary` profile for code, tests, refactors, and
+  debugging. Its requested model is Luna with at least medium reasoning and high
+  reasoning for complex or risky changes. Sol remains an orchestration profile.
+- **Why:** this is the user's explicit quality and cost preference for coding.
+- **Alternatives:** keeping Luna as a soft economy preference was rejected
+  because it did not determine Coder routing; silent fallback to Sol or Terra was
+  rejected because requested and actual model identity must remain truthful.
+- **Consequences:** the Coder must preflight and attest Luna before editing. If
+  Luna is unavailable in the active runtime, implementation delegation stops and
+  requires an explicit user-approved substitution.
+- **Evidence:** the routing table contains `coder-primary`; the main skill calls
+  it out as a pinned profile; demo Coder metadata identifies Luna.
+- **Revisit when:** the user changes the preferred coding model or the runtime
+  exposes a new canonical Luna identifier that should be pinned directly.

@@ -64,6 +64,9 @@ who is blocked, and which result has already been accepted.
 - Cursor Agent CLI: `2026.07.23-e383d2b`; authentication confirmed
 - Available canonical slug: `cursor-grok-4.5-high-fast`
 - Actual smoke run: `docs/research/runtime-smoke.md`; verdict `approved`
+- Coder routing: Luna is the pinned requested model for code, tests, refactors,
+  and debugging. Sol remains an orchestration preference; Luna may not be
+  silently replaced by Sol, Terra, or another model.
 
 ## Event contract
 
