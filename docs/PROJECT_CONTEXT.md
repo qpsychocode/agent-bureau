@@ -64,9 +64,10 @@ who is blocked, and which result has already been accepted.
 - Cursor Agent CLI: `2026.07.23-e383d2b`; authentication confirmed
 - Available canonical slug: `cursor-grok-4.5-high-fast`
 - Actual smoke run: `docs/research/runtime-smoke.md`; verdict `approved`
-- Coder routing: Luna is the pinned requested model for code, tests, refactors,
-  and debugging. Sol remains an orchestration preference; Luna may not be
-  silently replaced by Sol, Terra, or another model.
+- Coder routing: `gpt-5.6-luna` with `max` reasoning is the pinned requested
+  profile for code, tests, refactors, and debugging. Sol remains an orchestration
+  preference; Luna Max may not be silently replaced by Sol, Terra, or another
+  model or effort.
 
 ## Event contract
 
@@ -81,8 +82,8 @@ who is blocked, and which result has already been accepted.
   "taskId": "TASK-17",
   "task": "Add authentication",
   "status": "working",
-  "model": "luna",
-  "effort": "medium",
+  "model": "gpt-5.6-luna",
+  "effort": "max",
   "phase": "implementation",
   "summary": "Build middleware and tests",
   "progress": 54

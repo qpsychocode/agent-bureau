@@ -392,14 +392,13 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
 
 ## ADR-021 — Luna is pinned for implementation code
 
-- **Status:** accepted
+- **Status:** superseded by ADR-022
 - **Date:** 2026-08-02
 - **Area:** agent routing, models, coding
 - **Context:** Luna previously appeared only as a generic economy-worker
   preference, so a Coder could still be assigned Sol or Terra.
 - **Decision:** use the `coder-primary` profile for code, tests, refactors, and
-  debugging. Its requested model is Luna with at least medium reasoning and high
-  reasoning for complex or risky changes. Sol remains an orchestration profile.
+  debugging. Its requested model is Luna. Sol remains an orchestration profile.
 - **Why:** this is the user's explicit quality and cost preference for coding.
 - **Alternatives:** keeping Luna as a soft economy preference was rejected
   because it did not determine Coder routing; silent fallback to Sol or Terra was
@@ -411,3 +410,26 @@ what was chosen, why, which alternatives were rejected, and when to revisit it.
   it out as a pinned profile; demo Coder metadata identifies Luna.
 - **Revisit when:** the user changes the preferred coding model or the runtime
   exposes a new canonical Luna identifier that should be pinned directly.
+
+## ADR-022 — Coder uses Luna Max by default
+
+- **Status:** accepted
+- **Date:** 2026-08-03
+- **Area:** agent routing, models, coding
+- **Context:** the user wants all active GPT-5.6 Terra assignments replaced with
+  GPT-5.6 Luna Max, based on current benchmark and cost observations.
+- **Decision:** set the active Coder profile to `gpt-5.6-luna` with `max`
+  reasoning. Active demo assignments that still referenced GPT-5.6 Terra are
+  migrated to the same Luna Max profile.
+- **Why:** this is the user's explicit quality/cost preference. The benchmark
+  and price claim is recorded as user rationale, not independently asserted fact.
+- **Alternatives:** keeping medium/high as a soft default was rejected because
+  the user explicitly pinned Max; silent fallback was rejected because the
+  actual model and effort must be attested.
+- **Consequences:** Coder work requires exact model-and-effort preflight. If
+  `gpt-5.6-luna` or `max` is unavailable, stop and request a decision instead of
+  substituting another GPT-5.6 variant.
+- **Evidence:** local model catalog lists `gpt-5.6-luna` with `max`; active
+  demo snapshots contain no GPT-5.6 Terra assignments after this change.
+- **Revisit when:** the user changes the coding preference or the runtime
+  changes Luna's supported reasoning levels.

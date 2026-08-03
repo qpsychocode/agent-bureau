@@ -36,9 +36,10 @@ When assigning the Researcher, use the bundled adapter
 Cursor/Grok profile.
 
 When assigning the Coder, request the pinned `coder-primary` profile from
-`references/model-routing.md`. Luna writes implementation code by default; do not silently
-route coding to Sol, Terra, or another substitute. If the active runtime cannot attest
-Luna, stop the Coder assignment and report the unavailable requested profile.
+`references/model-routing.md`. GPT-5.6 Luna with `max` reasoning writes implementation
+code by default; do not silently route coding to Sol, Terra, or another substitute. If the
+active runtime cannot attest both `gpt-5.6-luna` and `max`, stop the Coder assignment and
+report the unavailable requested profile.
 
 ## Role pool
 

@@ -25,20 +25,21 @@ a specific model, an `unverified` result or substitution is blocking.
 | Profile | Preference | Reasoning | Use |
 |---|---|---|---|
 | `orchestrator-primary` | The strongest available orchestration model; currently prefer GPT-5.6 Sol | high or above | Decomposition, conflicting requirements, integration |
-| `coder-primary` | Luna; resolve and attest its exact canonical ID in the active runtime | medium by default, high for complex or risky changes | All implementation code, tests, refactors, and debugging |
+| `coder-primary` | GPT-5.6 Luna (`gpt-5.6-luna`) | max | All implementation code, tests, refactors, and debugging |
 | `worker-economy` | Luna, when available in the active runtime | medium by default, high for complex work | Routine writing, marketing, and preparation |
 | `research-primary` | Cursor Grok 4.5 High Fast | high + fast | External search and evidence-based reports |
 | `verifier-primary` | A strong independent model, not the worker's session | high | Review of meaningful artifacts |
 | `image-primary` | Specialized image generation tool | tool-specific | New raster images |
 
-Treat the user-specified Luna profile as pinned for the Coder and preferred for economy
-workers. Before a Coder writes or changes code, verify Luna in the specific product and
-account, select the runtime's exact canonical model identifier, and attest the launched
-model. Do not claim Luna was used unless the runtime reported it. An unavailable,
-unverified, or substituted Luna is blocking for a Coder assignment; ask the user before
-routing implementation to Sol, Terra, or any other model. For non-coding work where no
-model is pinned, the orchestrator may choose an available economy substitute with effort
-no lower than medium and explicitly record the substitution.
+Treat the user-specified GPT-5.6 Luna Max profile as pinned for the Coder and preferred
+for economy workers. Before a Coder writes or changes code, verify the exact
+`gpt-5.6-luna` model and `max` effort in the specific product and account, then attest
+both values from the launched runtime. Do not claim Luna Max was used unless the runtime
+reported both. An unavailable, unverified, or substituted model or effort is blocking for
+a Coder assignment; ask the user before routing implementation to Sol, Terra, or any
+other model. For non-coding work where no model is pinned, the orchestrator may choose an
+available economy substitute with effort no lower than medium and explicitly record the
+substitution.
 
 ## Reasoning level
 
